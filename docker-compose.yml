@@ -1,0 +1,11 @@
+services:
+  fastapi:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: fastapi_app
+    working_dir: /opt/VELOCITY_ML/River_Discharge
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/opt/VELOCITY_ML/River_Discharge

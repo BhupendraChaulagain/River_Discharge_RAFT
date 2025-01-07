@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Segmented Image</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div>
+        <h1>Click on two points to define a region</h1>
+        
+        <!-- Display the segmented frame -->
+        <div class="image-container">
+            <h3>Segmented Frame</h3>
+            <img id="segmented_image" src="{{ segmented_frame_url }}" alt="Segmented Frame" style="max-width: 100%; height: auto;">
+        </div>
+
+        <!-- Display the coordinates -->
+        <div id="coordinates">
+            <p>Click on two points to define a region (xmin, ymin) and (xmax, ymax).</p>
+            <p><strong>Coordinates:</strong> <span id="coord_display">Xmin: , Ymin: , Xmax: , Ymax: </span></p>
+        </div>
+
+        <!-- Reset Button -->
+        <button id="reset_button">Reset</button>
+
+            <form id="distance_form" method="post" action="/calculate_scaling_factor" enctype="multipart/form-data">
+                <!-- Real-world distance input -->
+                <label for="real_distance">Enter real-world distance between the two points:</label>
+                <input type="number" id="real_distance" name="real_distance" step="0.01" required>
+                <br><br>
+    
+                
+            
+            <!-- Hidden fields to send coordinates -->
+            <input type="hidden" id="xmin" name="xmin">
+            <input type="hidden" id="ymin" name="ymin">
+            <input type="hidden" id="xmax" name="xmax">
+            <input type="hidden" id="ymax" name="ymax">
+            <input type="hidden" id="depth_file_uploaded" value="false">
+            
+            <button type="submit" id="submit_button">Submit</button>
+        </form>
+    </div>
+
+    <script>
+        const segmentedImage = document.getElementById("segmented_image");
+        const coordDisplay = document.getElementById("coord_display");
+        const resetButton = document.getElementById("reset_button");
+
+        let clickCount = 0; 
+        let xmin, ymin, xmax, ymax; 
+
+        segmentedImage.addEventListener("click", (event) => {
+            const rect = segmentedImage.getBoundingClientRect();
+            const x = event.clientX - rect.left;  
+            const y = event.clientY - rect.top;   
+            const realX = Math.round(x * (segmentedImage.naturalWidth / rect.width));
+            const realY = Math.round(y * (segmentedImage.naturalHeight / rect.height));
+
+            if (clickCount === 0) {
+                xmin = realX;
+                ymin = realY;
+                clickCount++;
+                coordDisplay.textContent = `Xmin: ${xmin}, Ymin: ${ymin}, Xmax: , Ymax: `;
+            } else if (clickCount === 1) {
+                xmax = realX;
+                ymax = realY;
+                clickCount = 0; 
+                coordDisplay.textContent = `Xmin: ${xmin}, Ymin: ${ymin}, Xmax: ${xmax}, Ymax: ${ymax}`;
+                document.getElementById("xmin").value = xmin;
+                document.getElementById("ymin").value = ymin;
+                document.getElementById("xmax").value = xmax;
+                document.getElementById("ymax").value = ymax;
+            }
+        });
+
+        resetButton.addEventListener("click", () => {
+            clickCount = 0;
+            xmin = ymin = xmax = ymax = undefined;
+            coordDisplay.textContent = "Xmin: , Ymin: , Xmax: , Ymax: ";
+        });
+    </script>
+</body>
+</html>

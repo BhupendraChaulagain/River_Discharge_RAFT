@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Select Region</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div>
+        <h1 class="CroppedImg">Select the region of Interest and provide number of Segments</h1>
+        <br><br>
+        
+        <div class="frame-container">
+            <canvas id="canvas"></canvas>
+        </div>
+        <div class="center-parameter">
+           
+            <form id="select_velocity_form" action="/select_region" method="post">
+                <input type="hidden" name="frame_file" id="frame_file" value="{{ frame_url }}">
+                <h2>Select Region:</h2>
+                <div class="form-group">
+                    <label for="x_start">Start X-Coordinate:</label>
+                    <input type="number" id="x_start" name="x_start" required>
+                </div>
+                <div class="form-group">
+                    <label for="x_end">End X-Coordinate:</label>
+                    <input type="number" id="x_end" name="x_end" required>
+                </div>
+                <div class="form-group">
+                    <label for="y_start">Start Y-Coordinate:</label>
+                    <input type="number" id="y_start" name="y_start" required>
+                </div>
+                <div class="form-group">
+                    <label for="y_end">End Y-Coordinate:</label>
+                    <input type="number" id="y_end" name="y_end" required>
+                </div>
+                <div class="form-group">
+                    <label for="num_segments">Number of Segments:</label>
+                    <input type="number" id="num_segments" name="num_segments" required>
+                </div>
+                <button type="submit" id="submit_button">Display Segmented Frame</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById("canvas");
+        const ctx = canvas.getContext("2d");
+
+        const image = new Image();
+        image.src = "{{ frame_url }}"; // The frame image URL from the backend
+        image.onload = () => {
+            const originalWidth = image.width;
+            const originalHeight = image.height;
+
+            // Resize image to half the size
+            const newWidth = originalWidth / 2;
+            const newHeight = originalHeight / 2;
+
+            // Update canvas size to match the new image size
+            canvas.width = newWidth;
+            canvas.height = newHeight;
+
+            // Draw the resized image on the canvas
+            ctx.drawImage(image, 0, 0, newWidth, newHeight);
+
+            // Variables to store the start and end points of the rectangle
+            let startX, startY, endX, endY;
+            let isDrawing = false;
+
+            // Mouse event to draw rectangle
+            canvas.addEventListener("mousedown", (e) => {
+                isDrawing = true;
+                const rect = canvas.getBoundingClientRect();
+                startX = e.clientX - rect.left;
+                startY = e.clientY - rect.top;
+            });
+
+            canvas.addEventListener("mousemove", (e) => {
+                if (isDrawing) {
+                    const rect = canvas.getBoundingClientRect();
+                    endX = e.clientX - rect.left;
+                    endY = e.clientY - rect.top;
+
+                    ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear the canvas
+                    ctx.drawImage(image, 0, 0, newWidth, newHeight); // Redraw the resized image
+                    ctx.beginPath();
+                    ctx.rect(startX, startY, endX - startX, endY - startY); // Draw rectangle on the canvas
+                    ctx.strokeStyle = "red";
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                }
+            });
+
+            canvas.addEventListener("mouseup", () => {
+                isDrawing = false;
+
+                // Adjust the final coordinates to original size based on the resize factor
+                const resizeFactorX = originalWidth / newWidth;
+                const resizeFactorY = originalHeight / newHeight;
+
+                // Calculate coordinates in the original image size
+                const originalStartX = Math.round(startX * resizeFactorX);
+                const originalStartY = Math.round(startY * resizeFactorY);
+                const originalEndX = Math.round(endX * resizeFactorX);
+                const originalEndY = Math.round(endY * resizeFactorY);
+
+                // Set the calculated coordinates in the form fields
+                document.getElementById("x_start").value = originalStartX;
+                document.getElementById("y_start").value = originalStartY;
+                document.getElementById("x_end").value = originalEndX;
+                document.getElementById("y_end").value = originalEndY;
+
+                
+                document.getElementById("frame_file").value = image.src.split('/').pop();
+            });
+        };
+
+        // Debugging: Log the frame URL to verify it's being set correctly
+        console.log("Frame URL:", image.src);
+    </script>
+</body>
+</html>

@@ -1,0 +1,10 @@
+numpy==2.2.1
+opencv-python-headless==4.10.0.84
+pandas==2.2.3
+sympy==1.13.1
+torch==2.5.1
+torchaudio==2.5.1
+torchvision==0.20.1
+scipy==1.14.1
+itsdangerous==2.2.0
+python_multipart=0.0.20

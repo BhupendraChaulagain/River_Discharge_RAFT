@@ -1,0 +1,167 @@
+
+ *{
+    padding: 0;
+    margin: 0;
+    box-sizing: border-box;
+ }
+
+
+
+ h1{
+
+
+    color: green !important;
+
+ }
+button {
+        background-color: yellow;
+        color: green;
+        font-size: 20px; /* Makes the text size bigger */
+        padding: 15px 30px; /* Increases the size of the button box */
+        border: none; /* Optional: Removes any default borders */
+        border-radius: 5px; /* Optional: Adds rounded corners */
+        cursor: pointer; /* Changes the cursor to a pointer when hovered */
+}
+
+body {
+    font-family: Arial, sans-serif;
+    background-color: hsl(213, 35%, 88%);
+    margin: 0;
+    padding: 0;
+}
+
+.container {
+    width: 50%;
+    height: auto;
+    margin: 50px auto;
+    background-color: #fff;
+    padding: 30px;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    text-align: center;
+}
+
+.frame-container {
+    width: 100%;
+    height: auto;
+    text-align: center;
+}
+
+.center-parameter {
+    text-align: center;
+    margin-top: 20px;
+}
+
+button {
+    padding: 10px 20px;
+    margin-top: 10px;
+}
+
+
+.CroppedImg{
+    text-align: center;
+    font-size: 43px;
+    color: purple;
+    font-weight: bold;
+}
+
+.video-container {
+    position: relative;
+    width: 1024px;
+    margin: auto;
+}
+
+video {
+    width: 100%;
+}
+
+/* Custom progress bar container */
+.custom-progress-bar {
+    position: relative;
+    height: 20px;
+    background-color: #ccc;
+    cursor: pointer;
+    margin-top: 15px;
+    border-radius: 5px;
+}
+
+/* Progress fill to show playback progress */
+.progress-fill {
+    position: absolute;
+    height: 100%;
+    background-color: blue;
+    width: 0%;
+    border-radius: 5px;
+}
+
+/* Rectangle for time selection */
+.red-box {
+    position: absolute;
+    height: 100%;
+    background-color: rgba(255, 0, 0, 0.5);
+    border: 1px solid red;
+}
+
+/*form {
+    margin-top: 20px;
+}*/
+
+.reset-button {
+    margin-left: 15px;
+    padding: 5px 10px;
+    background-color: #ff4d4d;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.reset-button:hover {
+    background-color: #e60000;
+}
+
+form {
+    max-width: 400px;
+    margin: 0 auto; /* Center align the form */
+    padding: 20px;
+    background-color: #f9f9f9; /* Light background for contrast */
+    border: 1px solid #ddd; /* Subtle border */
+    border-radius: 8px; /* Rounded corners */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Soft shadow */
+}
+
+/* Styling for each form group */
+.form-group {
+    margin-bottom: 15px; /* Space between fields */
+    display: flex;
+    flex-direction: column; /* Arrange label and input vertically */
+}
+
+/* Styling the labels */
+.form-group label {
+    font-weight: bold;
+    margin-bottom: 5px; /* Space below label */
+    color: #333; /* Darker text for readability */
+}
+
+/* Styling the input fields */
+.form-group input {
+    padding: 10px;
+    font-size: 16px;
+    border: 1px solid #ccc; /* Subtle border */
+    border-radius: 4px; /* Rounded corners for input */
+    width: 100%; /* Make inputs take full width */
+    box-sizing: border-box; /* Include padding in width */
+}
+
+/* Add hover and focus effects for inputs */
+.form-group input:focus {
+    outline: none;
+    border-color: #007bff; /* Highlight border on focus */
+    box-shadow: 0 0 5px rgba(0, 123, 255, 0.5); /* Glow effect */
+}
+
+.h3{
+    color: red;
+    font-size: small;
+}

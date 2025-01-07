@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Selection</title>
+    <link rel="stylesheet" href="/static/style.css">
+    
+</head>
+<body>
+    <h1>Select the appropriate section of video</h1>
+    <div class="video-container">
+        <video id="video" controls>
+            <source src="{{video_url}}" type="video/mp4">
+            Your browser does not support the video tag.
+        </video>
+        <br>
+        <br>
+        <br>
+        <p>Drag mouse in below rectangle to select time</p>
+        <div class="custom-progress-bar" id="custom-progress-bar">
+            <div class="progress-fill" id="progress-fill"></div>
+        </div>
+    </div>
+
+    <form action="/process_video/" method="post">
+        <label for="start_time">Start Time (seconds):</label>
+        <input type="number" id="start_time" name="start_time" step="0.1" readonly required>
+        <label for="end_time">End Time (seconds):</label>
+        <input type="number" id="end_time" name="end_time" step="0.1" readonly required>
+        <button type="submit">Submit</button>
+        <button type="button" class="reset-button" id="reset-button">Reset</button>
+    </form>
+
+    <script>
+const video = document.getElementById('video');
+const customProgressBar = document.getElementById('custom-progress-bar');
+const progressFill = document.getElementById('progress-fill');
+const startTimeInput = document.getElementById('start_time');
+const endTimeInput = document.getElementById('end_time');
+const resetButton = document.getElementById('reset-button');
+
+let isDragging = false;
+let startX = 0;
+let currentRect = null;
+
+// Update the custom progress bar as the video plays
+video.addEventListener('timeupdate', () => {
+    const progress = (video.currentTime / video.duration) * 100;
+    progressFill.style.width = `${progress}%`;
+});
+
+// Mouse down to start drawing
+customProgressBar.addEventListener('mousedown', (e) => {
+    if (!video.duration) return; // Wait until the video is fully loaded
+
+    isDragging = true;
+    startX = e.offsetX;
+
+    // Remove any existing rectangles
+    customProgressBar.querySelectorAll('.red-box').forEach((box) => box.remove());
+
+    // Create new red rectangle
+    currentRect = document.createElement('div');
+    currentRect.className = 'red-box';
+    customProgressBar.appendChild(currentRect);
+
+    // Set initial position and width
+    currentRect.style.left = `${startX}px`;
+    currentRect.style.width = `0px`;
+});
+
+// Mouse move to resize the rectangle
+customProgressBar.addEventListener('mousemove', (e) => {
+    if (isDragging && currentRect) {
+        const mouseX = e.offsetX;
+        const rectStart = Math.min(startX, mouseX);
+        const rectWidth = Math.abs(mouseX - startX);
+
+        // Update rectangle position and size
+        currentRect.style.left = `${rectStart}px`;
+        currentRect.style.width = `${rectWidth}px`;
+    }
+});
+
+// Mouse up to finalize the rectangle and calculate times
+customProgressBar.addEventListener('mouseup', (e) => {
+    if (isDragging) {
+        isDragging = false;
+
+        if (!currentRect) return;
+
+        const overlayWidth = customProgressBar.offsetWidth;
+
+        // Calculate start and end based on rectangle position
+        const rectStart = parseFloat(currentRect.style.left);
+        const rectWidth = parseFloat(currentRect.style.width);
+
+        const startTime = (rectStart / overlayWidth) * video.duration;
+        const endTime = ((rectStart + rectWidth) / overlayWidth) * video.duration;
+
+        // Update the start and end times in the form
+        startTimeInput.value = startTime.toFixed(1);
+        endTimeInput.value = endTime.toFixed(1);
+    }
+});
+
+// Scrubbing functionality
+customProgressBar.addEventListener('click', (e) => {
+    const rect = customProgressBar.getBoundingClientRect();
+    const clickPosition = e.clientX - rect.left;
+    const clickRatio = clickPosition / customProgressBar.offsetWidth;
+    video.currentTime = clickRatio * video.duration;
+});
+
+// Reset functionality
+resetButton.addEventListener('click', () => {
+    // Remove the red rectangle
+    customProgressBar.querySelectorAll('.red-box').forEach((box) => box.remove());
+
+    // Reset the start and end times
+    startTimeInput.value = '';
+    endTimeInput.value = '';
+});
+
+// Prevent selecting text while dragging
+document.addEventListener('mouseup', () => {
+    isDragging = false;
+});
+
+    </script>
+    
+    
+</body>
+</html>
