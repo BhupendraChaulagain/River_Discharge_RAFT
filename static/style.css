@@ -10,16 +10,18 @@
  h1{
 
 
-    color: green !important;
+    color: black !important;
+    font-size: 40px;
+    font-display: swap ;
 
  }
 button {
-        background-color: yellow;
-        color: green;
-        font-size: 20px; /* Makes the text size bigger */
+        background-color: black ;
+        color: white;
+        font-size: 30px; /* Makes the text size bigger */
         padding: 15px 30px; /* Increases the size of the button box */
-        border: none; /* Optional: Removes any default borders */
-        border-radius: 5px; /* Optional: Adds rounded corners */
+        border:rgba(255, 0, 0, 0.5); /* Optional: Removes any default borders */
+        border-radius: 8px; /* Optional: Adds rounded corners */
         cursor: pointer; /* Changes the cursor to a pointer when hovered */
 }
 
@@ -33,13 +35,34 @@ body {
 .container {
     width: 50%;
     height: auto;
-    margin: 50px auto;
+    margin: 100px auto;
     background-color: #fff;
     padding: 30px;
     border-radius: 10px;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
     text-align: center;
 }
+
+.choose_text{
+    justify-content: center;
+    width: 500px;
+    height:auto;
+    background-color: rgb(233, 232, 232);
+    
+}
+
+.align-file{
+    display: flex;
+    justify-content: center; 
+    align-items: center; 
+    margin-bottom: 20px;
+}
+
+.file_chose{
+    display:flex;
+    justify-content: center;
+}
+
 
 .frame-container {
     width: 100%;
@@ -65,7 +88,14 @@ button {
     font-weight: bold;
 }
 
+.video-heading{
+    text-align: center;
+    margin: 10px auto;
+}
+
+
 .video-container {
+    margin-top: 200px;
     position: relative;
     width: 1024px;
     margin: auto;
@@ -121,7 +151,7 @@ video {
 }
 
 form {
-    max-width: 400px;
+    
     margin: 0 auto; /* Center align the form */
     padding: 20px;
     background-color: #f9f9f9; /* Light background for contrast */
@@ -164,4 +194,12 @@ form {
 .h3{
     color: red;
     font-size: small;
+}
+
+.file_upload{
+    
+    padding-right: 30px;
+    margin-right: 30px;
+    font-size: larger;
+    font-family:'Times New Roman', Times, serif;
 }

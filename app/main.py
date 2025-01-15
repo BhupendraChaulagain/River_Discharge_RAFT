@@ -19,10 +19,10 @@ from starlette.middleware.sessions import SessionMiddleware
 from app.delete_frames import delete_all_files_in_directory
 
 
-# Initialize app and directories
+# Initialization of app and directories
 app = FastAPI()
 app.mount("/static", StaticFiles(directory=Path(__file__).parent.parent / "static"), name="static")
-# templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
+templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
 app.mount("/rectangle", StaticFiles(directory="rectangle"), name="rectangle")
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 

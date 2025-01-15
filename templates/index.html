@@ -3,19 +3,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="../static/style.css?v=1.0">
+
 
     <title>Video Upload</title>
+
 
 </head>
 <body>
     <div class="container">
-    <h1 >Upload a Video</h1>
+    <h1  >Upload a Video</h1>
     <br>
     <br>
-    <form action="/upload/" method="post" enctype="multipart/form-data">
-        <input type="file" name="file" accept="video/*" required>
+    <div class = "file_chose">
+    <form  class = "choose_text" action="/upload/" method="post" enctype="multipart/form-data">
+        <div class = "align-file">
+        <input     type="file" class="file_upload" name="file" accept="video/*" required>
+    </div>
+
         <button type="submit">Upload</button>
+    </div>
     </form>
 </div>
 </body>
