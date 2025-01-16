@@ -4,24 +4,28 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Segment Velocity Results</title>
+    <link rel="stylesheet" href="../static/style.css?v=1.0">
 </head>
 <body>
-    <h1>Segment Velocity Results</h1>
-    <h3> Results have been shown from right side of the user</h3>
-    <h2>Segment-Wise Velocities:</h2>
-    <ul>
-        {% for segment, velocity in segment_avg_velocity.items() %}
-        <li>
-            <strong>Segment {{ segment }}:</strong>
-            Velocity = <strong> {{ velocity }}m/s </strong> , 
-           
-        </li>
-        {% endfor %}
-    </ul>
-    
+   
 
     <h2>Segmented Image with Arrows</h2>
-    <img src="{{ image_url }}" alt="Segmented Image with Arrows" style="max-width: 100%; height: auto;">
+    <div class="final-video">
+    <img src="{{ image_url }}" class= "final-video" alt="Segmented Image with Arrows" style="max-width: 70%; height: auto; align-items: center;">
+</div>
+<br>
+<h1>Segment Velocity Results</h1>
+<h3> Results have been shown from right side of the user</h3>
+<h2>Segment-Wise Velocities:</h2>
+<ul>
+    {% for segment, velocity in segment_avg_velocity.items() %}
+    <li>
+        <strong>Segment {{ segment }}:</strong>
+        Velocity = <strong> {{ velocity }}m/s </strong> , 
+       
+    </li>
+    {% endfor %}
+</ul>
 
     <br><br>
     <a href="/">Upload another video</a>

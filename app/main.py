@@ -113,7 +113,7 @@ async def process_video(request: Request, start_time: float = Form(...), end_tim
         return {"error": "No video uploaded."}
 
     try:
-        frame_count = 5  
+        frame_count = 2  
         first_frame_path, fps = extract_frames_by_time(video_path, FRAMES_DIR, start_time, end_time, frame_count=frame_count)
 
         session["fps"] = fps
