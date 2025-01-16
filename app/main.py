@@ -8,7 +8,7 @@ import shutil
 from app.frame_extraction import extract_frames_by_time
 from app.calculate_velocity import calculate_velocity
 import cv2
-
+import threading
 import numpy as np
 from pathlib import Path
 import pandas as pd
@@ -17,6 +17,8 @@ from app.arrows import draw_velocity_arrows_based_on_segments
 from app.scale import calculate_scale
 from starlette.middleware.sessions import SessionMiddleware
 from app.delete_frames import delete_all_files_in_directory
+from app.video_capture import start_capture
+
 
 
 # Initialization of app and directories
@@ -58,6 +60,19 @@ templates = Jinja2Templates(directory="templates")
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
+
+
+
+
+@app.post("/start_capture/")
+async def start_video_capture():
+    """
+    Endpoint to start video capture in a separate thread.
+    """
+    threading.Thread(target=start_capture).start()
+    return RedirectResponse(url="/", status_code=303)
+
+
 
 @app.post("/upload/")
 async def upload_video(

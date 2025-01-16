@@ -12,7 +12,7 @@ video_duration = 3
 capture_interval = 10 * 60  
 
 # Output directory for  captured videos
-output_dir = "../uploads"
+output_dir = os.path.join(os.getcwd(), "uploads")
 os.makedirs(output_dir, exist_ok=True)
 
 # Initiliaztion of video capture
@@ -65,12 +65,13 @@ def capture_video(video_index):
     return True
 
 # Infinite loop to capture videos continuously
-video_index = 1
-while True:
-    print(f"Starting capture for video {video_index}...")
-    success = capture_video(video_index)
-    if not success:
-        print("Skipping this capture due to errors.")
-    video_index += 1
-    print(f"Waiting for {capture_interval} seconds before the next capture...")
-    time.sleep(capture_interval)  
+def start_capture():
+    video_index = 1
+    while True:
+        print(f"Starting capture for video {video_index}...")
+        success = capture_video(video_index)
+        if not success:
+            print("Skipping this capture due to errors.")
+        video_index += 1
+        print(f"Waiting for {capture_interval} seconds before the next capture...")
+        time.sleep(capture_interval)  
