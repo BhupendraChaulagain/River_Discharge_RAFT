@@ -95,7 +95,7 @@ button {
 
 
 .video-container {
-    margin-top: 200px;
+    
     position: relative;
     width: 1024px;
     margin: auto;
@@ -105,10 +105,15 @@ video {
     width: 100%;
 }
 
+.mouse_drag{
+    margin-top: 20px;
+    font-size: 25px;
+}
+
 /* Custom progress bar container */
 .custom-progress-bar {
     position: relative;
-    height: 20px;
+    height: 30px;
     background-color: #ccc;
     cursor: pointer;
     margin-top: 15px;
@@ -124,6 +129,9 @@ video {
     border-radius: 5px;
 }
 
+
+
+
 /* Rectangle for time selection */
 .red-box {
     position: absolute;
@@ -136,18 +144,47 @@ video {
     margin-top: 20px;
 }*/
 
+.time_fill{
+    
+    text-align: center;
+    
+    width: 500px;
+    margin: 30px auto;
+}
+
+.submit-reste{
+    display: flex;
+    margin: 10px 30px;
+    justify-content: center;
+}
+
+.submit-button{
+    text-align: center;
+}
+.submit-button:hover{
+    background-color: red;
+    transform: scale(1.25);
+    transition: transform 0.2s ease;
+}
+
 .reset-button {
-    margin-left: 15px;
-    padding: 5px 10px;
-    background-color: #ff4d4d;
+    background-color: #a52020;
     color: white;
     border: none;
     border-radius: 5px;
     cursor: pointer;
+    margin-left: 30px;
 }
 
 .reset-button:hover {
     background-color: #e60000;
+    transform: scale(1.25);
+    transition: transform 0.3s ease;
+}
+
+
+#end_time{
+    margin-top: 5px;
 }
 
 form {

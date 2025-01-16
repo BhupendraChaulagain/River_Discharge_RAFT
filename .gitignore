@@ -14,3 +14,9 @@ velocity_data
 reftnew
 LICENSE
 README.md 
+Dockerfile
+docker-compose.yml
+chairs_split.txt
+RAFT.png
+train_mixed.sh
+train_standard.sh
