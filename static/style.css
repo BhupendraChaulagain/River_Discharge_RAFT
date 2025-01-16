@@ -195,6 +195,7 @@ form {
     border: 1px solid #ddd; /* Subtle border */
     border-radius: 8px; /* Rounded corners */
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Soft shadow */
+    width: 900px;
 }
 
 /* Styling for each form group */
@@ -202,18 +203,22 @@ form {
     margin-bottom: 15px; /* Space between fields */
     display: flex;
     flex-direction: column; /* Arrange label and input vertically */
+    width:  25%;
 }
 
 /* Styling the labels */
 .form-group label {
+    
+    padding-left: 10px;
     font-weight: bold;
     margin-bottom: 5px; /* Space below label */
     color: #333; /* Darker text for readability */
+    align-items: center;
 }
 
 /* Styling the input fields */
 .form-group input {
-    padding: 10px;
+    text-align: center;
     font-size: 16px;
     border: 1px solid #ccc; /* Subtle border */
     border-radius: 4px; /* Rounded corners for input */
