@@ -5,17 +5,20 @@ import os
 # RTSP URL with authentication
 rtsp_url = 'rtsp://admin:windows631@192.168.5.190:554/ISAPI/Streaming/channels/001'
 
-#captured video duration
+# Captured video duration
 video_duration = 3
 
 # Set the interval of 10 minutes in seconds
-capture_interval = 10 * 60  
+capture_interval = 100  
 
-# Output directory for  captured videos
+# Output directory for captured videos
 output_dir = os.path.join(os.getcwd(), "uploads")
 os.makedirs(output_dir, exist_ok=True)
 
-# Initiliaztion of video capture
+# Target resolution for output video (e.g., 1280x720)
+target_resolution = (1280, 720)
+
+# Initialization of video capture
 def initialize_capture():
     cap = cv2.VideoCapture(rtsp_url)
     if not cap.isOpened():
@@ -36,15 +39,12 @@ def capture_video(video_index):
         print(f"Failed to initialize capture for video {video_index}")
         return False
 
-    
     flush_buffer(cap)
 
-    
-    frame_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-    frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    print(f"Capturing video {video_index} with dimensions: {frame_width}x{frame_height}")
+    frame_width = target_resolution[0]
+    frame_height = target_resolution[1]
+    print(f"Capturing video {video_index} with target dimensions: {frame_width}x{frame_height}")
 
-    
     fourcc = cv2.VideoWriter_fourcc(*'XVID')
     output_filename = os.path.join(output_dir, f"video_{video_index}.avi")
     out = cv2.VideoWriter(output_filename, fourcc, 20.0, (frame_width, frame_height))
@@ -56,8 +56,10 @@ def capture_video(video_index):
             print("Error: Failed to capture frame. Retrying...")
             time.sleep(0.1)  # Short pause before retrying
             continue
-        # Writing frame to video file
-        out.write(frame)
+
+        # Resize frame to target resolution
+        resized_frame = cv2.resize(frame, target_resolution)
+        out.write(resized_frame)
 
     out.release()
     cap.release()
@@ -74,4 +76,4 @@ def start_capture():
             print("Skipping this capture due to errors.")
         video_index += 1
         print(f"Waiting for {capture_interval} seconds before the next capture...")
-        time.sleep(capture_interval)  
+        time.sleep(capture_interval)

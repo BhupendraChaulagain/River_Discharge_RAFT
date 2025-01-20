@@ -1,7 +1,7 @@
 import cv2
 import os
 
-def extract_frames_by_time(video_path, output_dir, start_time, end_time, frame_count=5, fps=None):
+def extract_frames_by_time(video_path, output_dir, start_time, end_time, frame_count=2, fps=None):
    
     os.makedirs(output_dir, exist_ok=True)
     cap = cv2.VideoCapture(video_path)
@@ -9,13 +9,16 @@ def extract_frames_by_time(video_path, output_dir, start_time, end_time, frame_c
     
     if fps is None:
         fps = round(cap.get(cv2.CAP_PROP_FPS))
+        print("fps:", fps)
     
     total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
     duration = total_frames / fps
 
+    print(f"Video Info: FPS = {fps}, Total Frames = {total_frames}, Duration = {duration:.2f} seconds")
+    print(f"Requested Start Time: {start_time}, End Time: {end_time}")
     # Validate start and end times
     if start_time >= duration or end_time > duration or start_time >= end_time:
-        raise ValueError("Invalid start or end time.")
+        raise ValueError(f"Invalid start or end time: Start = {start_time}, End = {end_time}, Duration = {duration:.2f} seconds")
 
     start_frame = int(start_time * fps)
     end_frame = min(int(end_time * fps), total_frames)  # Ensure we don't exceed total frames
@@ -55,4 +58,4 @@ def extract_frames_by_time(video_path, output_dir, start_time, end_time, frame_c
     if not extracted_frames:
         raise ValueError("No frames were extracted.")
     
-    return extracted_frames, fps
+    return extracted_frames

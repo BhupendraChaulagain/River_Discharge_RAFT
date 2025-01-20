@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>View Captured Video</title>
+</head>
+<body>
+    <h1>Captured Video</h1>
+    <video controls style="max-width: 100%;">
+        <source src="{{ video_url }}" type="video/avi">
+        Your browser does not support the video tag.
+    </video>
+    <p>Video Name: {{ video_name }}</p>
+</body>
+</html>

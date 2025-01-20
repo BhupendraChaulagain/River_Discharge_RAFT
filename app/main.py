@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, File, Request, Form, HTTPException
+from fastapi import FastAPI,  Request, Form, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse  
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
@@ -18,7 +18,8 @@ from app.scale import calculate_scale
 from starlette.middleware.sessions import SessionMiddleware
 from app.delete_frames import delete_all_files_in_directory
 from app.video_capture import start_capture
-
+import time
+from fastapi.responses import JSONResponse
 
 
 # Initialization of app and directories
@@ -36,9 +37,6 @@ app.add_middleware(
 )
 
 
-
-
-
 UPLOAD_DIR = "uploads"
 FRAMES_DIR = "static/frames"
 STAT_DIR = "static"
@@ -54,109 +52,100 @@ os.makedirs(RECTANGLE_DIR, exist_ok=True)
 templates = Jinja2Templates(directory="templates")
 
 
-
-
-
 @app.get("/", response_class=HTMLResponse)
-async def index(request: Request):
+async def render_home(request: Request):
+    """
+    Render the home page.
+    """
     return templates.TemplateResponse("index.html", {"request": request})
 
 
+def wait_for_video_to_be_fully_saved(video_path, wait_time=5):
+    """Wait until the video file is completely written."""
+    last_size = -1
+    elapsed_time = 0
+    while elapsed_time < wait_time:
+        current_size = os.path.getsize(video_path)
+        if current_size == last_size:
+            return True  # Video is fully written
+        last_size = current_size
+        time.sleep(1)  # Wait for 1 second before checking again
+        elapsed_time += 1
+    return False
 
+
+
+
+
+capture_thread = None
+capture_complete = threading.Event()
 
 @app.post("/start_capture/")
-async def start_video_capture():
+async def start_capture_endpoint():
     """
-    Endpoint to start video capture in a separate thread.
+    Start the capture process and display the first frame of the first captured video.
     """
-    threading.Thread(target=start_capture).start()
-    return RedirectResponse(url="/", status_code=303)
-
-
-
-@app.post("/upload/")
-async def upload_video(
-    request: Request, 
-    file: UploadFile = File(...),   
-):
-    
-
-    session = request.session
-    
-    # Saving the uploaded video
-    video_path = os.path.join(UPLOAD_DIR, file.filename)
-    sanitized_filename = re.sub(r'[^\w\-_\. ]', '_', file.filename)
-    video_path = os.path.join(UPLOAD_DIR, sanitized_filename)
-    request.session['uploaded_video_path'] = video_path
-
-
-    with open(video_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
-
-    
-    return RedirectResponse(url="/preview_video/", status_code=303)
-    
-
-@app.get("/preview_video/", response_class=HTMLResponse)
-async def preview_video(request: Request):
-    """
-    Displaying video and allowing users to select start and end times.
-    """
-    session = request.session
-    video_path = session.get("uploaded_video_path")
-
-    if not video_path:
-        return templates.TemplateResponse("index.html", {"request": request, "error": "No video uploaded."})
-
-    video_url = f"/uploads/{Path(video_path).name}"
-    #video_url = f"uploads/{os.path.basename(video_path)}"
-    return templates.TemplateResponse("preview.html", {"request": request, "video_url": video_url})
-
-
-
-
-
-@app.post("/process_video/")
-async def process_video(request: Request, start_time: float = Form(...), end_time: float = Form(...)):
-    """
-    Processing video from start_time to end_time and extract frames.
-    """
-    session = request.session
-    video_path = session.get("uploaded_video_path")
-
-    if not video_path:
-        return {"error": "No video uploaded."}
-
     try:
-        frame_count = 2  
-        first_frame_path, fps = extract_frames_by_time(video_path, FRAMES_DIR, start_time, end_time, frame_count=frame_count)
+        global capture_thread
 
-        session["fps"] = fps
+        if not capture_thread or not capture_thread.is_alive():
+            capture_thread = threading.Thread(target=start_capture, daemon=True)
+            capture_thread.start()
+            print("Video capture started.")
 
-        # Using the first frame for redirection
-        first_frame_url = f"/static/frames/{os.path.basename(first_frame_path[0])}"
-        redirect_url = f"/frame/?frame_url={first_frame_url}"
+        wait_time = 40  # Time to wait for the first video to be captured
+        start_time = time.time()
+        while time.time() - start_time < wait_time:
+            captured_files = sorted(
+                [f for f in os.listdir(UPLOAD_DIR) if f.endswith(".avi")],
+                key=lambda x: os.path.getmtime(os.path.join(UPLOAD_DIR, x)),
+            )
+            if captured_files:
+                break
+            time.sleep(1)  # Check periodically
 
-      
+        # Find the first captured video
+        
+        if not captured_files:
+            return JSONResponse(content={"status": "No videos captured yet"}, status_code=400)
 
-        return RedirectResponse(url=redirect_url, status_code=303)
+        first_video_path = os.path.join(UPLOAD_DIR, captured_files[0])
+
+        if not os.path.exists(first_video_path):
+            return JSONResponse(content={"status": "Video file not found"}, status_code=500)
+        
+        if not wait_for_video_to_be_fully_saved(first_video_path):
+            return JSONResponse(content={"status": "Video file not fully saved"}, status_code=500)
+
+        cap = cv2.VideoCapture(first_video_path)
+        fps = round(cap.get(cv2.CAP_PROP_FPS))
+        total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        duration = total_frames / fps if fps > 0 else 0
+        cap.release()
+
+        # Extract the first frame from the video
+        start_time, end_time = 0.5, 1.5  # Extract from the start of the video
+        frame_paths = extract_frames_by_time(first_video_path, FRAMES_DIR, start_time, end_time, frame_count=2)
+        first_frame_path = frame_paths[0]
+
+        # Redirect to the frame selection page
+        first_frame_url = f"/static/frames/{os.path.basename(first_frame_path)}"
+        return RedirectResponse(url=f"/frame?frame_url={first_frame_url}", status_code=303)
 
     except Exception as e:
-        return {"error": str(e)}
-
-
-
-
+        print(f"Error: {e}")
+        return JSONResponse(content={"status": "Error capturing video"}, status_code=500)
 
 @app.get("/frame", response_class=HTMLResponse)
 async def frame(request: Request, frame_url: str):
-    print(f"Frame URL received: {frame_url}") 
+    """
+    Display the frame to select the region of interest.
+    """
     try:
-       
         return templates.TemplateResponse("frame.html", {"request": request, "frame_url": frame_url})
     except Exception as e:
         print(f"Error displaying frame: {e}")
-        return templates.TemplateResponse("index.html", {"request": request, "error": "Error displaying frame"})
+        return JSONResponse(content={"status": "Error displaying frame"}, status_code=500)
 
 
 region_coordinates = {"x_start": 0, "y_start": 0, "x_end": 0, "y_end": 0}
@@ -173,13 +162,6 @@ def select_region(event, x, y, flags, param):
 
 
 
-
-
-
-
-
-
-
 @app.post("/select_region")
 async def select_region_endpoint(request: Request, frame_file: str = Form(...), 
                                   x_start: int = Form(...), y_start: int = Form(...), 
@@ -191,9 +173,6 @@ async def select_region_endpoint(request: Request, frame_file: str = Form(...),
     session = request.session
     print("resssssssssssssss")
     
-    
-
-
     frame_path = os.path.join(FRAMES_DIR, frame_file)
     frame = cv2.imread(frame_path)
 
@@ -261,33 +240,12 @@ async def select_region_endpoint(request: Request, frame_file: str = Form(...),
     session['num_segments'] = num_segments
 
     
-
-
-
-
-
-
-    
-
-
-    
     redirect_url = f"/show_image?frame_url=/static/frames/{frame_file}&segmented_frame_url=/rectangle/{rect_image_filename}&x_start={x_start}&y_start={y_start}&x_end={x_end}&y_end={y_end}&num_segments={num_segments}"    
     print(f"Redirecting to: {redirect_url}")  
     return RedirectResponse(url=redirect_url, status_code=302)
 
 
     
-
-
-
-
-
-
-
-
-
-
-
 @app.get("/show_image")
 async def show_image(request: Request, frame_url: str = None, segmented_frame_url: str = None, 
                      x_start: int = 0, y_start: int = 0, x_end: int = 0, y_end: int = 0, real_world_distance: float = 0.0):
@@ -304,10 +262,6 @@ async def show_image(request: Request, frame_url: str = None, segmented_frame_ur
 
 
 
-
-
-
-
 @app.post("/calculate_scaling_factor")
 async def calculate_scaling_factor(
     request: Request,
@@ -316,22 +270,14 @@ async def calculate_scaling_factor(
     xmax: int = Form(...), ymax: int = Form(...),
     
 ):
-    """
-    Process both scaling factor calculation and depth data upload in a single endpoint.
-    """
     try:
         #Calculating the scaling factor
         print(f"Received data - real_distance: {real_distance}, xmin: {xmin}, ymin: {ymin}, xmax: {xmax}, ymax: {ymax}")
         scaling_factor = calculate_scale(xmin, ymin, xmax, ymax, real_distance)
         print("Scaling_factor:", scaling_factor)
 
-        
-        
         request.session["scaling_factor"] = scaling_factor
 
-        
-
-        
         return RedirectResponse("/submit-arrowed-image", status_code=302)
 
     except Exception as e:
@@ -452,11 +398,6 @@ async def submit_arrowed_image(request: Request):
 
    
     return RedirectResponse(url=f"/display-arrowed-image/?image_url={image_url}", status_code=302)
-
-
-
-
-
 
 
 @app.get("/display-arrowed-image", response_class=HTMLResponse)
