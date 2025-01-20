@@ -20,7 +20,7 @@ from app.delete_frames import delete_all_files_in_directory
 from app.video_capture import start_capture
 import time
 from fastapi.responses import JSONResponse
-
+from app.video_save import video_save
 
 # Initialization of app and directories
 app = FastAPI()
@@ -59,24 +59,6 @@ async def render_home(request: Request):
     """
     return templates.TemplateResponse("index.html", {"request": request})
 
-
-def wait_for_video_to_be_fully_saved(video_path, wait_time=5):
-    """Wait until the video file is completely written."""
-    last_size = -1
-    elapsed_time = 0
-    while elapsed_time < wait_time:
-        current_size = os.path.getsize(video_path)
-        if current_size == last_size:
-            return True  # Video is fully written
-        last_size = current_size
-        time.sleep(1)  # Wait for 1 second before checking again
-        elapsed_time += 1
-    return False
-
-
-
-
-
 capture_thread = None
 capture_complete = threading.Event()
 
@@ -114,7 +96,7 @@ async def start_capture_endpoint():
         if not os.path.exists(first_video_path):
             return JSONResponse(content={"status": "Video file not found"}, status_code=500)
         
-        if not wait_for_video_to_be_fully_saved(first_video_path):
+        if not video_save(first_video_path):
             return JSONResponse(content={"status": "Video file not fully saved"}, status_code=500)
 
         cap = cv2.VideoCapture(first_video_path)
