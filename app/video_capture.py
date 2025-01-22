@@ -45,8 +45,9 @@ def capture_video(video_index):
     frame_height = target_resolution[1]
     print(f"Capturing video {video_index} with target dimensions: {frame_width}x{frame_height}")
 
-    fourcc = cv2.VideoWriter_fourcc(*'XVID')
     output_filename = os.path.join(output_dir, f"video_{video_index}.avi")
+    fourcc = cv2.VideoWriter_fourcc(*'XVID')
+    
     out = cv2.VideoWriter(output_filename, fourcc, 20.0, (frame_width, frame_height))
 
     start_time = time.time()

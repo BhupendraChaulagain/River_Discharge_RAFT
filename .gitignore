@@ -21,3 +21,5 @@ RAFT.png
 train_mixed.sh
 train_standard.sh
 .vscode
+rectangle
+static/frames

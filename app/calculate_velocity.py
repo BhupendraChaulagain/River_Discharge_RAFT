@@ -115,6 +115,7 @@ def calculate_velocity(frame_folder, output_csv, model_path, x_range=(0, 640), y
                         break
 
     
+
     output_directory = os.path.dirname(output_csv)
     if not os.path.exists(output_directory):
         os.makedirs(output_directory)

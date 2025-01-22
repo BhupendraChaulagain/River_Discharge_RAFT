@@ -1,9 +1,13 @@
 import cv2
 import os
 
+
+
 def extract_frames_by_time(video_path, output_dir, start_time, end_time, frame_count=2, fps=None):
    
     os.makedirs(output_dir, exist_ok=True)
+    video_name = os.path.splitext(os.path.basename(video_path))[0]
+
     cap = cv2.VideoCapture(video_path)
 
     
@@ -34,7 +38,7 @@ def extract_frames_by_time(video_path, output_dir, start_time, end_time, frame_c
 
     extracted_frames = []
 
-   
+    
 
     # Extract frames
     for i in range(frame_count):
@@ -48,7 +52,7 @@ def extract_frames_by_time(video_path, output_dir, start_time, end_time, frame_c
             print(f"Failed to read frame {frame_no}.")
             break
 
-        frame_filename = os.path.join(output_dir, f"frame_{i}.jpg")
+        frame_filename = os.path.join(output_dir, f"{video_name}_frame_{i}.jpg")
         cv2.imwrite(frame_filename, frame)
         extracted_frames.append(frame_filename)
         print(f"Extracted Frame {frame_no} -> {frame_filename}")
