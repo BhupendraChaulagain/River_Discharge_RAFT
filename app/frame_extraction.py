@@ -25,7 +25,7 @@ def extract_frames_by_time(video_path, output_dir, start_time, end_time, frame_c
         raise ValueError(f"Invalid start or end time: Start = {start_time}, End = {end_time}, Duration = {duration:.2f} seconds")
 
     start_frame = int(start_time * fps)
-    end_frame = min(int(end_time * fps), total_frames)  # Ensure we don't exceed total frames
+    end_frame = min(int(end_time * fps), total_frames)  # Ensuring don't exceed total frames
     available_frames = end_frame - start_frame
 
     # Calculate the actual number of frames to extract
