@@ -64,16 +64,22 @@ capture_thread = None
 capture_complete = threading.Event()
 
 def continuous_video_processing():
+    # Keep track of processed videos
+    processed_videos = set()
+    
     while True:
-        # Find the most recent video in uploads directory
+        # Find the most recent videos in uploads directory
         video_files = sorted(
             [f for f in os.listdir(UPLOAD_DIR) if f.endswith('.avi')],
             key=lambda x: os.path.getmtime(os.path.join(UPLOAD_DIR, x)),
             reverse=True
         )
 
-        if video_files:
-            latest_video = os.path.join(UPLOAD_DIR, video_files[0])
+        for video_filename in video_files:
+            if video_filename in processed_videos:
+                continue
+
+            latest_video = os.path.join(UPLOAD_DIR, video_filename)
             
             # Check if video is fully saved
             if video_save(latest_video):
@@ -88,17 +94,39 @@ def continuous_video_processing():
                         frame_count=2
                     )
 
-                    # Process first frame (similar to existing start_capture logic)
-                    first_frame_path = frame_paths[0]
-                    first_frame_url = f"/static/frames/{os.path.basename(first_frame_path)}"
+                    # Get session parameters from the first processed video
+                    x_start = 0  # You'll need to store these from the first processing
+                    y_start = 0
+                    x_end = 640
+                    y_end = 480
+                    num_segments = 4
+                    scaling_factor = 1.0  # You'll need to store this from the first processing
+                    fps = round(cv2.VideoCapture(latest_video).get(cv2.CAP_PROP_FPS))
+
+                    # Unique velocity data filename
+                    video_index = len(processed_videos) + 1
+                    velocity_data_path = os.path.join(VELOCITY_DATA_DIR, f"velocity_data_{video_index}.csv")
+
+                    # Calculate velocity
+                    model_path = os.path.join(STAT_DIR, "raft-sintel.pth")
+                    calculate_velocity(
+                        frame_folder=FRAMES_DIR,
+                        output_csv=velocity_data_path,
+                        model_path=model_path,
+                        x_range=(x_start, x_end),
+                        y_range=(y_start, y_end),
+                        num_segments=num_segments
+                    )
+
+                    # Mark video as processed
+                    processed_videos.add(video_filename)
                     
-                    # You might want to trigger further processing or notification here
                     print(f"Processed video: {latest_video}")
                     
                 except Exception as e:
                     print(f"Error processing video: {e}")
 
-        # Wait before checking for next video
+        # Wait before checking for next videos
         time.sleep(30)  # Adjust interval as needed
 
 # Start this as a background thread in your FastAPI startup
