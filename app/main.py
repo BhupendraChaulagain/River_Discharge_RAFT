@@ -22,6 +22,7 @@ import time
 from fastapi.responses import JSONResponse
 from app.video_save import video_save
 from app.process_mult_videos import process_multiple_videos
+from dotenv import load_dotenv
 
 # Initialization of app and directories
 app = FastAPI()
@@ -31,10 +32,10 @@ app.mount("/rectangle", StaticFiles(directory="rectangle"), name="rectangle")
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 
-
+load_dotenv()
 app.add_middleware(
     SessionMiddleware,
-    secret_key="s20vfc45ki",  
+    secret_key=os.getenv("SECRET_KEY"),  
 )
 
 
@@ -64,10 +65,22 @@ capture_thread = None
 capture_complete = threading.Event()
 
 def continuous_video_processing():
-    # Keep track of processed videos
+    # Global variables to store region parameters
+    global first_video_region_params
+    first_video_region_params = None
     processed_videos = set()
     
     while True:
+        # Default region parameters if no first video processed
+        default_region_params = {
+            'x_start': 0,
+            'y_start': 0,
+            'x_end': 640,
+            'y_end': 480,
+            'num_segments': 4,
+            'scaling_factor': 1.0,
+        }
+
         # Find the most recent videos in uploads directory
         video_files = sorted(
             [f for f in os.listdir(UPLOAD_DIR) if f.endswith('.avi')],
@@ -94,13 +107,22 @@ def continuous_video_processing():
                         frame_count=2
                     )
 
-                    # Get session parameters from the first processed video
-                    x_start = 0  # You'll need to store these from the first processing
-                    y_start = 0
-                    x_end = 640
-                    y_end = 480
-                    num_segments = 4
-                    scaling_factor = 1.0  # You'll need to store this from the first processing
+                    # Use first video's parameters or default
+                    region_params = first_video_region_params or default_region_params
+
+                    # Use stored or default region parameters
+                    x_start = region_params['x_start']
+                    y_start = region_params['y_start']
+                    x_end = region_params['x_end']
+                    y_end = region_params['y_end']
+                    num_segments = region_params['num_segments']
+                    scaling_factor = region_params['scaling_factor']
+
+                    # If first video and no parameters stored, print warning
+                    if first_video_region_params is None:
+                        print("Warning: Using default region parameters")
+
+                    # Get video FPS
                     fps = round(cv2.VideoCapture(latest_video).get(cv2.CAP_PROP_FPS))
 
                     # Unique velocity data filename
@@ -127,7 +149,7 @@ def continuous_video_processing():
                     print(f"Error processing video: {e}")
 
         # Wait before checking for next videos
-        time.sleep(30)  # Adjust interval as needed
+        time.sleep(30)
 
 # Start this as a background thread in your FastAPI startup
 @app.on_event("startup")

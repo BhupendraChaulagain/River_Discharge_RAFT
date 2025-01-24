@@ -23,3 +23,4 @@ train_standard.sh
 .vscode
 rectangle
 static/frames
+.env
