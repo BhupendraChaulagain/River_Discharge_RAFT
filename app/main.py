@@ -22,6 +22,7 @@ import time
 from fastapi.responses import JSONResponse
 from app.video_save import video_save
 from app.process_mult_videos import process_multiple_videos
+from app.velocity_append import start_velocity_monitoring
 from dotenv import load_dotenv
 
 # Initialization of app and directories
@@ -64,6 +65,10 @@ async def render_home(request: Request):
 capture_thread = None
 capture_complete = threading.Event()
 
+first_video_region_params = None  # Initialize globally
+processed_videos = set()
+
+
 def continuous_video_processing():
     # Global variables to store region parameters
     global first_video_region_params
@@ -80,7 +85,7 @@ def continuous_video_processing():
             'num_segments': 4,
             'scaling_factor': 1.0,
         }
-
+        
         # Find the most recent videos in uploads directory
         video_files = sorted(
             [f for f in os.listdir(UPLOAD_DIR) if f.endswith('.avi')],
@@ -121,7 +126,8 @@ def continuous_video_processing():
                     # If first video and no parameters stored, print warning
                     if first_video_region_params is None:
                         print("Warning: Using default region parameters")
-
+                    
+                    
                     # Get video FPS
                     fps = round(cv2.VideoCapture(latest_video).get(cv2.CAP_PROP_FPS))
 
@@ -154,9 +160,31 @@ def continuous_video_processing():
 # Start this as a background thread in your FastAPI startup
 @app.on_event("startup")
 def start_background_tasks():
-    threading.Thread(target=continuous_video_processing, daemon=True).start()
-
-@app.post("/start_capture/")
+    global first_video_region_params
+    region_params = first_video_region_params or {
+        'x_start': 0,
+        'y_start': 0,
+        'x_end': 640,
+        'y_end': 480,
+        'num_segments': 4,
+        'scaling_factor': 1.0,
+    }
+    
+    num_segments = region_params['num_segments']
+    video_processing_thread = threading.Thread(
+        target=continuous_video_processing, 
+        daemon=True
+    )
+    video_processing_thread.start()
+    
+    # Start velocity monitoring thread
+    velocity_monitor_thread = threading.Thread(
+        target=start_velocity_monitoring,
+        args=(VELOCITY_DATA_DIR, num_segments),  
+        daemon=True
+    )
+    velocity_monitor_thread.start()
+@app.post("/start_capture")
 async def start_capture_endpoint():
     """
     Start the capture process and display the first frame of the first captured video.
@@ -247,7 +275,6 @@ async def select_region_endpoint(request: Request, frame_file: str = Form(...),
 
     
     session = request.session
-    print("resssssssssssssss")
     
     frame_path = os.path.join(FRAMES_DIR, frame_file)
     frame = cv2.imread(frame_path)
@@ -295,18 +322,14 @@ async def select_region_endpoint(request: Request, frame_file: str = Form(...),
             x_range=(x_start, x_end),
             y_range=(y_start, y_end),
             num_segments= num_segments
-            
-        )
+            )
         
-
     except Exception as e:
         print(f"Exception: {str(e)}")  
         return {"error": f"Exception occurred while processing: {str(e)}"}
 
     
     segmented_frame_url = f"/rectangle/{rect_image_filename}"
-
-
 
     session['segmented_frame_url'] = segmented_frame_url
     session['x_start'] = x_start
@@ -315,13 +338,22 @@ async def select_region_endpoint(request: Request, frame_file: str = Form(...),
     session['y_end'] = y_end
     session['num_segments'] = num_segments
 
+    global first_video_region_params
+    first_video_region_params = {
+            'x_start': x_start,
+            'y_start': y_start,
+            'x_end': x_end,
+            'y_end': y_end,
+            'num_segments': num_segments,
+            'scaling_factor': 1.0  # Default scaling factor, can be adjusted
+        }
+
     
     redirect_url = f"/show_image?frame_url=/static/frames/{frame_file}&segmented_frame_url=/rectangle/{rect_image_filename}&x_start={x_start}&y_start={y_start}&x_end={x_end}&y_end={y_end}&num_segments={num_segments}"    
     print(f"Redirecting to: {redirect_url}")  
     return RedirectResponse(url=redirect_url, status_code=302)
 
 
-    
 @app.get("/show_image")
 async def show_image(request: Request, frame_url: str = None, segmented_frame_url: str = None, 
                      x_start: int = 0, y_start: int = 0, x_end: int = 0, y_end: int = 0, real_world_distance: float = 0.0):
@@ -380,8 +412,6 @@ async def submit_arrowed_image(request: Request):
     if not all([segmented_frame_url, x_start, y_start, x_end, y_end, num_segments, scaling_factor, fps]):
         return {"error": "Missing required session data."}
 
- 
-
     # Loading velocity data
     velocity_csv = os.path.join(VELOCITY_DATA_DIR, "velocity_data.csv")
     if not os.path.exists(velocity_csv):
@@ -395,53 +425,24 @@ async def submit_arrowed_image(request: Request):
         if 'segment' not in velocity_data.columns or 'velocity_x' not in velocity_data.columns or 'velocity_y' not in velocity_data.columns:
             return {"error": "Velocity CSV does not have the required columns: 'segment', 'velocity_x', and 'velocity_y'."}
 
-   
-    
-    # Calculating average velocities for each segment
+   # Calculating average velocities for each segment
         segment_avg_velocity_x = velocity_data.groupby('segment')['velocity_x'].mean().to_dict()
         segment_avg_velocity_y = velocity_data.groupby('segment')['velocity_y'].mean().to_dict()
 
-        
-
-
-        print("Segment_avg_y:", segment_avg_velocity_y)
-
-
         total_segment_velocity_y = sum(segment_avg_velocity_y.values())
 
-        print("Total Segment Velocity (Y):", total_segment_velocity_y)
-
-    
         segment_avg_velocity = {
             segment: (np.sqrt(segment_avg_velocity_x[segment]**2 + segment_avg_velocity_y[segment]**2))*(scaling_factor*fps)
             for segment in segment_avg_velocity_x
-
-                
     }
-        
-        
-        print("Segment average velocity:", segment_avg_velocity)
-        
-
-        
-
-
         converted_velocity = {}
-
 
         # taking data from right
         for original_segment, new_segment in zip(range(num_segments, 0, -1), range(1, num_segments + 1)):
             converted_velocity[new_segment] = segment_avg_velocity[original_segment]
-
-       
-        print("Converted Velocity:", converted_velocity)
             
-
-
     except Exception as e:
         return {"error": f"Error reading or processing the velocity CSV: {str(e)}"}
-
-    
 
     # Drawing arrows and save the updated image
     segmented_frame_path = os.path.join(RECTANGLE_DIR, os.path.basename(segmented_frame_url))
@@ -468,8 +469,6 @@ async def submit_arrowed_image(request: Request):
     
     session['converted_velocity'] = converted_velocity
     
-
-   
     image_url = f"/rectangle/{arrowed_image_filename}"
 
    
@@ -486,9 +485,21 @@ async def display_arrowed_image(request: Request, image_url: str):
         "request": request,
         "image_url": image_url,
         "segment_avg_velocity": converted_velocity,
-      
+      })
 
+VELOCITY_CSV_PATH = "velocity_data/velocity.csv"
+@app.get("/display-velocity", response_class=HTMLResponse)
+async def display_velocity(request: Request):
+    if os.path.exists(VELOCITY_CSV_PATH):
+        # Load the CSV file into a DataFrame
+        velocity_data = pd.read_csv(VELOCITY_CSV_PATH)
+        
+        # Convert the DataFrame to HTML for rendering
+        velocity_html = velocity_data.to_html(index=False, classes="table table-striped")
+    else:
+        velocity_html = "<p>Velocity data not found.</p>"
+    
+    return templates.TemplateResponse("velocity_data.html", {
+        "request": request,
+        "velocity_html": velocity_html,
     })
-
-
-

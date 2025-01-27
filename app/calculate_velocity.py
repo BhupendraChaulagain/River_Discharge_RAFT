@@ -49,8 +49,13 @@ def calculate_velocity(frame_folder, output_csv, model_path, x_range=(0, 640), y
 
     # Width of section calculated
     x_start, x_end = x_range
+    y_start, y_end = y_range
     x_step = (x_end - x_start) // num_segments
 
+    segment_width = (x_end - x_start) / num_segments
+    segment_boundaries = [(x_start + i * segment_width, x_start + (i + 1) * segment_width) 
+                         for i in range(num_segments)]
+    
     # Calculation of optical flow
     for i in range(len(frame_files) - frame_step):
         # Load consecutive frames
@@ -82,13 +87,16 @@ def calculate_velocity(frame_folder, output_csv, model_path, x_range=(0, 640), y
         scale_y = original_h / resized_h
 
         
-        h, w = flow.shape[:2]
+        scaled_x_start = int(x_start / scale_x)
+        scaled_x_end = int(x_end / scale_x)
+        scaled_y_start = int(y_start / scale_y)
+        scaled_y_end = int(y_end / scale_y)
 
         
-        for y in range(int(y_range[0] // scale_y), int(y_range[1] // scale_y), 1):
+        for y in range(int(scaled_y_start), int(scaled_y_end)):
             
-            for x in range(int(x_range[0] // scale_x),int( x_range[1] // scale_x), 1):
-                if x >= w or y >= h:
+            for x in range(int(scaled_x_start),int(scaled_x_end)):
+                if x >= flow.shape[1] or y >= flow.shape[0]:
                     continue
 
                 flow_at_point = flow[int(y), int(x)]
@@ -99,14 +107,11 @@ def calculate_velocity(frame_folder, output_csv, model_path, x_range=(0, 640), y
                 original_y = int(y * scale_y)
 
                
-                for segment in range(1, num_segments + 1):
-                    segment_start = x_start + (segment - 1) * x_step
-                    segment_end = x_start + segment * x_step
-
-                    if segment_start <= original_x < segment_end:
+                for segment_num, (seg_start, seg_end) in enumerate(segment_boundaries, 1):
+                    if seg_start <= original_x < seg_end:
                         velocity_data.append({
                             'frame': i,
-                            'segment': segment,
+                            'segment': segment_num,
                             'x-coordinate': original_x,
                             'y-coordinate': original_y,
                             'velocity_x': velocity_x * scale_x,
