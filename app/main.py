@@ -1,5 +1,5 @@
 from fastapi import FastAPI,  Request, Form, HTTPException
-from fastapi.responses import HTMLResponse, RedirectResponse  
+from fastapi.responses import HTMLResponse, RedirectResponse, FileResponse 
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 import os
@@ -24,7 +24,7 @@ from app.video_save import video_save
 from app.process_mult_videos import process_multiple_videos
 from app.velocity_append import start_velocity_monitoring
 from dotenv import load_dotenv
-
+from app import config
 # Initialization of app and directories
 app = FastAPI()
 app.mount("/static", StaticFiles(directory=Path(__file__).parent.parent / "static"), name="static")
@@ -72,8 +72,7 @@ processed_videos = set()
 def continuous_video_processing():
     # Global variables to store region parameters
     global first_video_region_params
-    first_video_region_params = None
-    processed_videos = set()
+    
     
     while True:
         # Default region parameters if no first video processed
@@ -123,6 +122,8 @@ def continuous_video_processing():
                     num_segments = region_params['num_segments']
                     scaling_factor = region_params['scaling_factor']
 
+                    print("Scaling factor inside first_video_parms:", scaling_factor)
+
                     # If first video and no parameters stored, print warning
                     if first_video_region_params is None:
                         print("Warning: Using default region parameters")
@@ -154,22 +155,23 @@ def continuous_video_processing():
                 except Exception as e:
                     print(f"Error processing video: {e}")
 
-        # Wait before checking for next videos
+        
         time.sleep(30)
 
-# Start this as a background thread in your FastAPI startup
+
 @app.on_event("startup")
 def start_background_tasks():
+    default_region_params = {
+            'x_start': 0,
+            'y_start': 0,
+            'x_end': 640,
+            'y_end': 480,
+            'num_segments': 4,
+            'scaling_factor': 1.0,
+            'fps': 20,
+        }
     global first_video_region_params
-    region_params = first_video_region_params or {
-        'x_start': 0,
-        'y_start': 0,
-        'x_end': 640,
-        'y_end': 480,
-        'num_segments': 4,
-        'scaling_factor': 1.0,
-    }
-    
+    region_params = first_video_region_params or default_region_params
     num_segments = region_params['num_segments']
     video_processing_thread = threading.Thread(
         target=continuous_video_processing, 
@@ -177,18 +179,18 @@ def start_background_tasks():
     )
     video_processing_thread.start()
     
-    # Start velocity monitoring thread
+    # Starting velocity monitoring thread
     velocity_monitor_thread = threading.Thread(
         target=start_velocity_monitoring,
         args=(VELOCITY_DATA_DIR, num_segments),  
         daemon=True
     )
     velocity_monitor_thread.start()
+
+
 @app.post("/start_capture")
 async def start_capture_endpoint():
-    """
-    Start the capture process and display the first frame of the first captured video.
-    """
+    
     try:
         global capture_thread
 
@@ -197,7 +199,7 @@ async def start_capture_endpoint():
             capture_thread.start()
             print("Video capture started.")
 
-        wait_time = 40  # Time to wait for the first video to be captured
+        wait_time = 60  # Time to wait for the first video to be captured
         start_time = time.time()
         while time.time() - start_time < wait_time:
             captured_files = sorted(
@@ -206,9 +208,9 @@ async def start_capture_endpoint():
             )
             if captured_files:
                 break
-            time.sleep(1)  # Check periodically
+            time.sleep(1)  
 
-        # Find the first captured video
+        
         
         if not captured_files:
             return JSONResponse(content={"status": "No videos captured yet"}, status_code=400)
@@ -228,11 +230,13 @@ async def start_capture_endpoint():
         cap.release()
 
         # Extract the first frame from the video
-        start_time, end_time = 0.5, 1.5  # Extract from the start of the video
+        start_time, end_time = 0.5, 1.5 
+        if duration < end_time:
+            return JSONResponse(content={"status": f"Video duration is too short. Duration: {duration}s, Requested End Time: {end_time}s"}, status_code=400) 
         frame_paths = extract_frames_by_time(first_video_path, FRAMES_DIR, start_time, end_time, frame_count=2)
         first_frame_path = frame_paths[0]
 
-        # Redirect to the frame selection page
+       
         first_frame_url = f"/static/frames/{os.path.basename(first_frame_path)}"
         return RedirectResponse(url=f"/frame?frame_url={first_frame_url}", status_code=303)
 
@@ -338,15 +342,7 @@ async def select_region_endpoint(request: Request, frame_file: str = Form(...),
     session['y_end'] = y_end
     session['num_segments'] = num_segments
 
-    global first_video_region_params
-    first_video_region_params = {
-            'x_start': x_start,
-            'y_start': y_start,
-            'x_end': x_end,
-            'y_end': y_end,
-            'num_segments': num_segments,
-            'scaling_factor': 1.0  # Default scaling factor, can be adjusted
-        }
+    
 
     
     redirect_url = f"/show_image?frame_url=/static/frames/{frame_file}&segmented_frame_url=/rectangle/{rect_image_filename}&x_start={x_start}&y_start={y_start}&x_end={x_end}&y_end={y_end}&num_segments={num_segments}"    
@@ -378,19 +374,29 @@ async def calculate_scaling_factor(
     xmax: int = Form(...), ymax: int = Form(...),
     
 ):
+    session = request.session
     try:
         #Calculating the scaling factor
         print(f"Received data - real_distance: {real_distance}, xmin: {xmin}, ymin: {ymin}, xmax: {xmax}, ymax: {ymax}")
         scaling_factor = calculate_scale(xmin, ymin, xmax, ymax, real_distance)
         print("Scaling_factor:", scaling_factor)
-
+        num_segments = session.get('num_segments')
+        fps = session.get('fps')
+        config.scaling_factor = scaling_factor
+        config.num_segments = num_segments
+        config.fps = fps 
         request.session["scaling_factor"] = scaling_factor
+
+        
+        
 
         return RedirectResponse("/submit-arrowed-image", status_code=302)
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error processing data: {str(e)}")
 
+
+    
 
 
 @app.get("/submit-arrowed-image")
@@ -407,6 +413,17 @@ async def submit_arrowed_image(request: Request):
     num_segments = session.get('num_segments')
     scaling_factor = session.get('scaling_factor')
     fps = session.get('fps')
+
+    global first_video_region_params
+    first_video_region_params = {
+            'x_start': x_start,
+            'y_start': y_start,
+            'x_end': x_end,
+            'y_end': y_end,
+            'num_segments': num_segments,
+            'scaling_factor': scaling_factor,
+            'fps': fps  # Default scaling factor, can be adjusted
+        }
 
     # Checking for missing session data
     if not all([segmented_frame_url, x_start, y_start, x_end, y_end, num_segments, scaling_factor, fps]):
@@ -503,3 +520,11 @@ async def display_velocity(request: Request):
         "request": request,
         "velocity_html": velocity_html,
     })
+
+@app.get("/download-velocity")
+def download_velocity():
+    # Check if the file exists before returning it
+    if os.path.exists(VELOCITY_CSV_PATH):
+        return FileResponse(VELOCITY_CSV_PATH, media_type="text/csv", filename="velocity.csv")
+    else:
+        return {"error": "Velocity file not found."}

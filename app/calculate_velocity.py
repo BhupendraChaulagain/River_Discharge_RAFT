@@ -16,7 +16,7 @@ def load_model(model_path):
     """Load the pre-trained RAFT model."""
     args = argparse.Namespace(small=False, mixed_precision=False, alternate_corr=False)
     model = torch.nn.DataParallel(RAFT(args))
-    model.load_state_dict(torch.load(model_path, map_location=torch.device('cpu')))
+    model.load_state_dict(torch.load(model_path, map_location=torch.device('cpu'), weights_only=True))
     model = model.module
     model.to('cpu')
     model.eval()

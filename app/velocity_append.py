@@ -4,20 +4,21 @@ import time
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 import numpy as np
-
+from app import config
 class VelocityDataHandler(FileSystemEventHandler):
-    def __init__(self, velocity_data_dir, output_file, num_segments, scaling_factor, fps):
+    def __init__(self, velocity_data_dir, output_file, num_segments):
         self.velocity_data_dir = velocity_data_dir
         self.output_file = output_file
         self.num_segments = num_segments
-        self.scaling_factor = scaling_factor
-        self.fps = fps
         self.processed_files = set()
         
-    def process_velocity_file(self, velocity_file, scaling_factor, fps):
+    def process_velocity_file(self, velocity_file):
         try:
             # Read the velocity data
             df = pd.read_csv(velocity_file)
+            scaling_factor, fps, num_segments = config.get_scaling_factor()
+
+            print("Scaling factor:", scaling_factor)
             
             # Calculate segment averages
             segment_avg_velocity_x = df.groupby('segment')['velocity_x'].mean()
