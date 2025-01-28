@@ -22,7 +22,7 @@ def load_model(model_path):
     model.eval()
     return model
 
-def preprocess_frame(frame, scale_factor=0.25):
+def preprocess_frame(frame, scale_factor=0.5):
     #preprocessing input
     original_h, original_w = frame.shape[:2]
     

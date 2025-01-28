@@ -6,10 +6,11 @@ from watchdog.events import FileSystemEventHandler
 import numpy as np
 from app import config
 class VelocityDataHandler(FileSystemEventHandler):
-    def __init__(self, velocity_data_dir, output_file, num_segments):
+    def __init__(self, velocity_data_dir, output_file):
         self.velocity_data_dir = velocity_data_dir
         self.output_file = output_file
-        self.num_segments = num_segments
+        
+
         self.processed_files = set()
         
     def process_velocity_file(self, velocity_file):
@@ -27,7 +28,7 @@ class VelocityDataHandler(FileSystemEventHandler):
             # Calculate total velocity for each segment
             segment_velocities = {
                 segment: (np.sqrt(segment_avg_velocity_x[segment]**2 + segment_avg_velocity_y[segment]**2))*scaling_factor*fps
-                for segment in range(1, self.num_segments + 1)
+                for segment in range(1, num_segments + 1)
             }
             
             # Create a row for the consolidated data
@@ -62,10 +63,10 @@ class VelocityDataHandler(FileSystemEventHandler):
                 self.process_velocity_file(event.src_path)
                 self.processed_files.add(event.src_path)
 
-def start_velocity_monitoring(velocity_data_dir, num_segments):
+def start_velocity_monitoring(velocity_data_dir):
    
     output_file = os.path.join(velocity_data_dir, 'velocity.csv')
-    event_handler = VelocityDataHandler(velocity_data_dir, output_file, num_segments)
+    event_handler = VelocityDataHandler(velocity_data_dir, output_file)
     
     # Process any existing files first
     for file in os.listdir(velocity_data_dir):

@@ -112,6 +112,8 @@ def continuous_video_processing():
                     )
 
                     # Use first video's parameters or default
+
+                    time.sleep(30)  #wait for 30 seconds so can get real data
                     region_params = first_video_region_params or default_region_params
 
                     # Use stored or default region parameters
@@ -123,7 +125,7 @@ def continuous_video_processing():
                     scaling_factor = region_params['scaling_factor']
 
                     print("Scaling factor inside first_video_parms:", scaling_factor)
-
+                    print("number of segments insidde first:", num_segments)
                     # If first video and no parameters stored, print warning
                     if first_video_region_params is None:
                         print("Warning: Using default region parameters")
@@ -171,8 +173,12 @@ def start_background_tasks():
             'fps': 20,
         }
     global first_video_region_params
+    
     region_params = first_video_region_params or default_region_params
     num_segments = region_params['num_segments']
+    scaling_factor = region_params['scaling_factor']
+    print("No of segments in background:", num_segments)
+    print("No of segments in background:", scaling_factor)
     video_processing_thread = threading.Thread(
         target=continuous_video_processing, 
         daemon=True
@@ -182,7 +188,7 @@ def start_background_tasks():
     # Starting velocity monitoring thread
     velocity_monitor_thread = threading.Thread(
         target=start_velocity_monitoring,
-        args=(VELOCITY_DATA_DIR, num_segments),  
+        args=(VELOCITY_DATA_DIR,),  
         daemon=True
     )
     velocity_monitor_thread.start()
@@ -199,7 +205,7 @@ async def start_capture_endpoint():
             capture_thread.start()
             print("Video capture started.")
 
-        wait_time = 60  # Time to wait for the first video to be captured
+        wait_time = 40  # Time to wait for the first video to be captured
         start_time = time.time()
         while time.time() - start_time < wait_time:
             captured_files = sorted(
@@ -480,8 +486,8 @@ async def submit_arrowed_image(request: Request):
     except Exception as e:
         return {"error": f"Error drawing arrows or saving the image: {str(e)}"}
 
-    delete_all_files_in_directory(FRAMES_DIR)
-    print("All files in the frames directory have been deleted.")
+    #delete_all_files_in_directory(FRAMES_DIR)
+    #print("All files in the frames directory have been deleted.")
 
     
     session['converted_velocity'] = converted_velocity
