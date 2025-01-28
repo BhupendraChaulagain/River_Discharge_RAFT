@@ -507,6 +507,35 @@ async def display_arrowed_image(request: Request, image_url: str):
 VELOCITY_CSV_PATH = "velocity_data/velocity.csv"
 @app.get("/display-velocity", response_class=HTMLResponse)
 async def display_velocity(request: Request):
+
+    global capture_thread
+    try:
+        # Stop the capturing process
+        if capture_thread:
+            capture_thread = False
+            # Logic to stop capture, e.g., closing a camera stream
+            print("Video capture stopped.")
+
+        # Delete all videos
+        if os.path.exists(UPLOAD_DIR):
+            shutil.rmtree(UPLOAD_DIR)
+            os.makedirs(UPLOAD_DIR)
+            print("All videos deleted.")
+
+        # Delete all frames
+        if os.path.exists(FRAMES_DIR):
+            shutil.rmtree(FRAMES_DIR)
+            os.makedirs(FRAMES_DIR)
+            print("All frames deleted.")
+
+        if os.path.exists(RECTANGLE_DIR):
+            shutil.rmtree(RECTANGLE_DIR)
+            os.makedirs(RECTANGLE_DIR)
+            print("All frames deleted.")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
+
+
     if os.path.exists(VELOCITY_CSV_PATH):
         # Load the CSV file into a DataFrame
         velocity_data = pd.read_csv(VELOCITY_CSV_PATH)
