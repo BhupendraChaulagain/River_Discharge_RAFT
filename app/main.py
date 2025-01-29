@@ -149,6 +149,8 @@ def continuous_video_processing():
                         num_segments=num_segments
                     )
 
+                    
+
                     # Mark video as processed
                     processed_videos.add(video_filename)
                     
@@ -200,6 +202,8 @@ async def start_capture_endpoint():
     try:
         global capture_thread
 
+        
+
         if not capture_thread or not capture_thread.is_alive():
             capture_thread = threading.Thread(target=start_capture, daemon=True)
             capture_thread.start()
@@ -236,7 +240,7 @@ async def start_capture_endpoint():
         cap.release()
 
         # Extract the first frame from the video
-        start_time, end_time = 0.5, 1.5 
+        start_time, end_time = 0.2, 0.6 
         if duration < end_time:
             return JSONResponse(content={"status": f"Video duration is too short. Duration: {duration}s, Requested End Time: {end_time}s"}, status_code=400) 
         frame_paths = extract_frames_by_time(first_video_path, FRAMES_DIR, start_time, end_time, frame_count=2)

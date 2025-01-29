@@ -1,7 +1,7 @@
 import os
 import time
 
-def video_save(video_path, wait_time=5):
+def video_save(video_path, wait_time=15):
     
     if not os.path.exists(video_path):
         print(f"File does not exist: {video_path}")
@@ -21,8 +21,8 @@ def video_save(video_path, wait_time=5):
             print(f"Error checking file size: {e}")
             return False
         
-        time.sleep(1)  # Wait before checking again
-        elapsed_time += 1
+        time.sleep(2)  # Wait before checking again
+        elapsed_time += 2
 
     print(f"File size did not stabilize within {wait_time} seconds")
     return False

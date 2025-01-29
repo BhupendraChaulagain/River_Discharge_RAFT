@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 import os
 import sys
-
+from app.delete_frames import delete_all_files_in_directory
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), 'core')))
 # Import RAFT components
@@ -120,7 +120,8 @@ def calculate_velocity(frame_folder, output_csv, model_path, x_range=(0, 640), y
                         break
 
     
-
+    delete_all_files_in_directory(frame_folder)
+    print("delete_all_files_done")
     output_directory = os.path.dirname(output_csv)
     if not os.path.exists(output_directory):
         os.makedirs(output_directory)
