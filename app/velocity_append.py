@@ -20,6 +20,7 @@ class VelocityDataHandler(FileSystemEventHandler):
             scaling_factor, fps, num_segments = config.get_scaling_factor()
 
             print("Scaling factor:", scaling_factor)
+            print("fps inside process_velocity_file :", fps)
             
             # Calculate segment averages
             segment_avg_velocity_x = df.groupby('segment')['velocity_x'].mean()

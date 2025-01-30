@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 import os
 import sys
+from collections import deque
 from app.delete_frames import delete_all_files_in_directory
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), 'core')))
@@ -22,8 +23,9 @@ def load_model(model_path):
     model.eval()
     return model
 
-def preprocess_frame(frame, scale_factor=0.5):
+def preprocess_frame(frame, scale_factor=0.25):
     #preprocessing input
+    frame = cv2.GaussianBlur(frame, (5, 5), 0)
     original_h, original_w = frame.shape[:2]
     
     resized_h, resized_w = int(original_h * scale_factor), int(original_w * scale_factor)
@@ -44,7 +46,7 @@ def calculate_velocity(frame_folder, output_csv, model_path, x_range=(0, 640), y
     if len(frame_files) < 2:
         print("Error: Not enough frames to calculate optical flow.")
         return []
-
+    
     velocity_data = []
 
     # Width of section calculated
@@ -80,6 +82,11 @@ def calculate_velocity(frame_folder, output_csv, model_path, x_range=(0, 640), y
         with torch.no_grad():
             flow = model(prev_frame, curr_frame)[1]
             flow = flow[0].numpy().transpose(1, 2, 0)
+
+
+        # Apply noise thresholding
+        
+        
 
         original_w, original_h = original_dims
         resized_w, resized_h = resized_dims
@@ -121,7 +128,7 @@ def calculate_velocity(frame_folder, output_csv, model_path, x_range=(0, 640), y
 
     
     delete_all_files_in_directory(frame_folder)
-    print("delete_all_files_done")
+    
     output_directory = os.path.dirname(output_csv)
     if not os.path.exists(output_directory):
         os.makedirs(output_directory)
@@ -129,7 +136,7 @@ def calculate_velocity(frame_folder, output_csv, model_path, x_range=(0, 640), y
     if velocity_data:
         df = pd.DataFrame(velocity_data)
         df.to_csv(output_csv, index=False)
-        print(f"Velocity data with segments saved to {output_csv}")
+        
     else:
         print("No velocity data to save.")
 

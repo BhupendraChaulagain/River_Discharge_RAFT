@@ -3,7 +3,7 @@ import os
 
 
 
-def extract_frames_by_time(video_path, output_dir, start_time, end_time, frame_count=2, fps=None):
+def extract_frames_by_time(video_path, output_dir, start_time, end_time, frame_count=5, fps=None):
    
     os.makedirs(output_dir, exist_ok=True)
     video_name = os.path.splitext(os.path.basename(video_path))[0]
@@ -13,13 +13,12 @@ def extract_frames_by_time(video_path, output_dir, start_time, end_time, frame_c
     
     if fps is None:
         fps = round(cap.get(cv2.CAP_PROP_FPS))
-        print("fps:", fps)
+        
     
     total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
     duration = total_frames / fps
 
-    print(f"Video Info: FPS = {fps}, Total Frames = {total_frames}, Duration = {duration:.2f} seconds")
-    print(f"Requested Start Time: {start_time}, End Time: {end_time}")
+    
     # Validate start and end times
     if start_time >= duration or end_time > duration or start_time >= end_time:
         raise ValueError(f"Invalid start or end time: Start = {start_time}, End = {end_time}, Duration = {duration:.2f} seconds")
@@ -31,10 +30,7 @@ def extract_frames_by_time(video_path, output_dir, start_time, end_time, frame_c
     # Calculate the actual number of frames to extract
     frame_count = min(frame_count, available_frames)
 
-    # Load video information
-    #print(f"Video Info: FPS = {fps}, Total Frames = {total_frames}, Duration = {duration} seconds")
-    #print(f"Start Frame: {start_frame}, End Frame: {end_frame}")
-    #print(f"Frames to Extract: {frame_count} (Available Frames: {available_frames})")
+    
 
     extracted_frames = []
 
@@ -55,7 +51,7 @@ def extract_frames_by_time(video_path, output_dir, start_time, end_time, frame_c
         frame_filename = os.path.join(output_dir, f"{video_name}_frame_{i}.jpg")
         cv2.imwrite(frame_filename, frame)
         extracted_frames.append(frame_filename)
-        print(f"Extracted Frame {frame_no} -> {frame_filename}")
+        
 
     cap.release()
 

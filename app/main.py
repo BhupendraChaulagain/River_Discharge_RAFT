@@ -108,12 +108,12 @@ def continuous_video_processing():
                         FRAMES_DIR, 
                         start_time, 
                         end_time, 
-                        frame_count=2
+                        frame_count=5
                     )
 
                     # Use first video's parameters or default
 
-                    time.sleep(30)  #wait for 30 seconds so can get real data
+                    time.sleep(40)  #wait for 30 seconds so can get real data
                     region_params = first_video_region_params or default_region_params
 
                     # Use stored or default region parameters
@@ -124,8 +124,7 @@ def continuous_video_processing():
                     num_segments = region_params['num_segments']
                     scaling_factor = region_params['scaling_factor']
 
-                    print("Scaling factor inside first_video_parms:", scaling_factor)
-                    print("number of segments insidde first:", num_segments)
+                    
                     # If first video and no parameters stored, print warning
                     if first_video_region_params is None:
                         print("Warning: Using default region parameters")
@@ -165,22 +164,7 @@ def continuous_video_processing():
 
 @app.on_event("startup")
 def start_background_tasks():
-    default_region_params = {
-            'x_start': 0,
-            'y_start': 0,
-            'x_end': 640,
-            'y_end': 480,
-            'num_segments': 4,
-            'scaling_factor': 1.0,
-            'fps': 20,
-        }
-    global first_video_region_params
     
-    region_params = first_video_region_params or default_region_params
-    num_segments = region_params['num_segments']
-    scaling_factor = region_params['scaling_factor']
-    print("No of segments in background:", num_segments)
-    print("No of segments in background:", scaling_factor)
     video_processing_thread = threading.Thread(
         target=continuous_video_processing, 
         daemon=True
@@ -197,8 +181,8 @@ def start_background_tasks():
 
 
 @app.post("/start_capture")
-async def start_capture_endpoint():
-    
+async def start_capture_endpoint(request: Request):
+    session = request.session
     try:
         global capture_thread
 
@@ -235,6 +219,8 @@ async def start_capture_endpoint():
 
         cap = cv2.VideoCapture(first_video_path)
         fps = round(cap.get(cv2.CAP_PROP_FPS))
+        session['fps'] = fps
+        print("fps for video capture is:", fps)
         total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
         duration = total_frames / fps if fps > 0 else 0
         cap.release()
@@ -243,7 +229,7 @@ async def start_capture_endpoint():
         start_time, end_time = 0.2, 0.6 
         if duration < end_time:
             return JSONResponse(content={"status": f"Video duration is too short. Duration: {duration}s, Requested End Time: {end_time}s"}, status_code=400) 
-        frame_paths = extract_frames_by_time(first_video_path, FRAMES_DIR, start_time, end_time, frame_count=2)
+        frame_paths = extract_frames_by_time(first_video_path, FRAMES_DIR, start_time, end_time, frame_count=5)
         first_frame_path = frame_paths[0]
 
        
@@ -392,6 +378,7 @@ async def calculate_scaling_factor(
         print("Scaling_factor:", scaling_factor)
         num_segments = session.get('num_segments')
         fps = session.get('fps')
+        print("fps inside session is:", fps)
         config.scaling_factor = scaling_factor
         config.num_segments = num_segments
         config.fps = fps 
@@ -530,18 +517,18 @@ async def display_velocity(request: Request):
         if os.path.exists(UPLOAD_DIR):
             shutil.rmtree(UPLOAD_DIR)
             os.makedirs(UPLOAD_DIR)
-            print("All videos deleted.")
+            
 
         # Delete all frames
         if os.path.exists(FRAMES_DIR):
             shutil.rmtree(FRAMES_DIR)
             os.makedirs(FRAMES_DIR)
-            print("All frames deleted.")
+            
 
         if os.path.exists(RECTANGLE_DIR):
             shutil.rmtree(RECTANGLE_DIR)
             os.makedirs(RECTANGLE_DIR)
-            print("All frames deleted.")
+            
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
 

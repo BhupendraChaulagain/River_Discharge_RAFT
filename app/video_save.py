@@ -14,8 +14,8 @@ def video_save(video_path, wait_time=15):
         try:
             current_size = os.path.getsize(video_path)
             if current_size > 0 and current_size == last_size:
-                print(f"File size stabilized: {current_size} bytes")
-                return True  # File writing is complete
+                
+                return True  
             last_size = current_size
         except Exception as e:
             print(f"Error checking file size: {e}")
