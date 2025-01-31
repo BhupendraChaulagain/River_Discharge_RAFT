@@ -164,7 +164,22 @@ def continuous_video_processing():
 
 @app.on_event("startup")
 def start_background_tasks():
-    
+    try:
+        directories = [
+        VELOCITY_DATA_DIR,
+        UPLOAD_DIR,
+        FRAMES_DIR,
+        RECTANGLE_DIR
+                ]
+        
+        for dir_path in directories:
+            if os.path.exists(dir_path):
+                shutil.rmtree(dir_path)
+                              
+        for dir_path in directories:
+            os.makedirs(dir_path, exist_ok=True)
+    except Exception as e:
+        print(f"Error initializing velocity directory: {str(e)}")
     video_processing_thread = threading.Thread(
         target=continuous_video_processing, 
         daemon=True
@@ -183,6 +198,7 @@ def start_background_tasks():
 @app.post("/start_capture")
 async def start_capture_endpoint(request: Request):
     session = request.session
+    
     try:
         global capture_thread
 
