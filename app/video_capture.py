@@ -1,9 +1,12 @@
 import cv2
 import time
 import os
+from dotenv import load_dotenv
 
+
+load_dotenv()
 # RTSP URL with authentication
-rtsp_url = 'rtsp://admin:windows631@192.168.5.190:554/ISAPI/Streaming/channels/001'
+rtsp_url = os.getenv("RTSP_URL")
 
 # Captured video duration
 video_duration = 3

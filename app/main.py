@@ -165,19 +165,20 @@ def continuous_video_processing():
 @app.on_event("startup")
 def start_background_tasks():
     try:
-        directories = [
-        VELOCITY_DATA_DIR,
-        UPLOAD_DIR,
-        FRAMES_DIR,
-        RECTANGLE_DIR
-                ]
-        
-        for dir_path in directories:
-            if os.path.exists(dir_path):
-                shutil.rmtree(dir_path)
-                              
-        for dir_path in directories:
-            os.makedirs(dir_path, exist_ok=True)
+        if os.path.exists(VELOCITY_DATA_DIR):
+            shutil.rmtree(VELOCITY_DATA_DIR)
+        if os.path.exists(UPLOAD_DIR):
+            shutil.rmtree(UPLOAD_DIR)
+        if os.path.exists(FRAMES_DIR):
+            shutil.rmtree(FRAMES_DIR)
+
+        if os.path.exists(RECTANGLE_DIR):
+            shutil.rmtree(RECTANGLE_DIR)
+
+        os.makedirs(VELOCITY_DATA_DIR, exist_ok=True)
+        os.makedirs(UPLOAD_DIR, exist_ok=True)
+        os.makedirs(FRAMES_DIR, exist_ok=True)
+        os.makedirs(RECTANGLE_DIR, exist_ok=True)  # Recreate directory
     except Exception as e:
         print(f"Error initializing velocity directory: {str(e)}")
     video_processing_thread = threading.Thread(
@@ -242,7 +243,7 @@ async def start_capture_endpoint(request: Request):
         cap.release()
 
         # Extract the first frame from the video
-        start_time, end_time = 0.2, 0.6 
+        start_time, end_time = 0.2, 1.2 
         if duration < end_time:
             return JSONResponse(content={"status": f"Video duration is too short. Duration: {duration}s, Requested End Time: {end_time}s"}, status_code=400) 
         frame_paths = extract_frames_by_time(first_video_path, FRAMES_DIR, start_time, end_time, frame_count=5)
