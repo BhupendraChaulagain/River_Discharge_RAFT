@@ -41,7 +41,7 @@ class VelocityDataHandler(FileSystemEventHandler):
                 row_data[f'segment_{segment}'] = velocity
                 
             # Calculate average velocity across all segments
-            row_data['average_velocity'] = np.mean(list(segment_velocities.values()))
+            #row_data['average_velocity'] = np.mean(list(segment_velocities.values()))
             
             # Create or append to the consolidated CSV
             if os.path.exists(self.output_file):

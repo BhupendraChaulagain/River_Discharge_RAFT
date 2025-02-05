@@ -25,6 +25,11 @@ from app.process_mult_videos import process_multiple_videos
 from app.velocity_append import start_velocity_monitoring
 from dotenv import load_dotenv
 from app import config
+
+
+
+
+
 # Initialization of app and directories
 app = FastAPI()
 app.mount("/static", StaticFiles(directory=Path(__file__).parent.parent / "static"), name="static")
@@ -46,6 +51,10 @@ STAT_DIR = "static"
 VELOCITY_DATA_DIR = "velocity_data"
 RECTANGLE_DIR = 'rectangle'
 
+
+
+
+
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 os.makedirs(FRAMES_DIR, exist_ok=True)
 os.makedirs(VELOCITY_DATA_DIR, exist_ok=True)
@@ -55,11 +64,47 @@ os.makedirs(RECTANGLE_DIR, exist_ok=True)
 templates = Jinja2Templates(directory="templates")
 
 
+
+
+@app.on_event("startup")
+def start_background_tasks():
+    try:
+        if os.path.exists(VELOCITY_DATA_DIR):
+            shutil.rmtree(VELOCITY_DATA_DIR)
+        if os.path.exists(UPLOAD_DIR):
+            shutil.rmtree(UPLOAD_DIR)
+        if os.path.exists(FRAMES_DIR):
+            shutil.rmtree(FRAMES_DIR)
+
+        if os.path.exists(RECTANGLE_DIR):
+            shutil.rmtree(RECTANGLE_DIR)
+
+        os.makedirs(VELOCITY_DATA_DIR, exist_ok=True)
+        os.makedirs(UPLOAD_DIR, exist_ok=True)
+        os.makedirs(FRAMES_DIR, exist_ok=True)
+        os.makedirs(RECTANGLE_DIR, exist_ok=True)  # Recreate directory
+    except Exception as e:
+        print(f"Error initializing velocity directory: {str(e)}")
+    video_processing_thread = threading.Thread(
+        target=continuous_video_processing, 
+        daemon=True
+    )
+    video_processing_thread.start()
+    
+    # Starting velocity monitoring thread
+    velocity_monitor_thread = threading.Thread(
+        target=start_velocity_monitoring,
+        args=(VELOCITY_DATA_DIR,),  
+        daemon=True
+    )
+    velocity_monitor_thread.start()
+
+
 @app.get("/", response_class=HTMLResponse)
 async def render_home(request: Request):
-    """
-    Render the home page.
-    """
+    if os.path.exists(VELOCITY_DATA_DIR):
+            shutil.rmtree(VELOCITY_DATA_DIR)
+            os.makedirs(VELOCITY_DATA_DIR)
     return templates.TemplateResponse("index.html", {"request": request})
 
 capture_thread = None
@@ -67,6 +112,8 @@ capture_complete = threading.Event()
 
 first_video_region_params = None  # Initialize globally
 processed_videos = set()
+
+
 
 
 def continuous_video_processing():
@@ -162,42 +209,12 @@ def continuous_video_processing():
         time.sleep(30)
 
 
-@app.on_event("startup")
-def start_background_tasks():
-    try:
-        if os.path.exists(VELOCITY_DATA_DIR):
-            shutil.rmtree(VELOCITY_DATA_DIR)
-        if os.path.exists(UPLOAD_DIR):
-            shutil.rmtree(UPLOAD_DIR)
-        if os.path.exists(FRAMES_DIR):
-            shutil.rmtree(FRAMES_DIR)
 
-        if os.path.exists(RECTANGLE_DIR):
-            shutil.rmtree(RECTANGLE_DIR)
-
-        os.makedirs(VELOCITY_DATA_DIR, exist_ok=True)
-        os.makedirs(UPLOAD_DIR, exist_ok=True)
-        os.makedirs(FRAMES_DIR, exist_ok=True)
-        os.makedirs(RECTANGLE_DIR, exist_ok=True)  # Recreate directory
-    except Exception as e:
-        print(f"Error initializing velocity directory: {str(e)}")
-    video_processing_thread = threading.Thread(
-        target=continuous_video_processing, 
-        daemon=True
-    )
-    video_processing_thread.start()
-    
-    # Starting velocity monitoring thread
-    velocity_monitor_thread = threading.Thread(
-        target=start_velocity_monitoring,
-        args=(VELOCITY_DATA_DIR,),  
-        daemon=True
-    )
-    velocity_monitor_thread.start()
 
 
 @app.post("/start_capture")
 async def start_capture_endpoint(request: Request):
+    
     session = request.session
     
     try:
@@ -522,13 +539,15 @@ VELOCITY_CSV_PATH = "velocity_data/velocity.csv"
 @app.get("/display-velocity", response_class=HTMLResponse)
 async def display_velocity(request: Request):
 
-    global capture_thread
+    global capture_thread, video_capture
     try:
         # Stop the capturing process
         if capture_thread:
             capture_thread = False
             # Logic to stop capture, e.g., closing a camera stream
             print("Video capture stopped.")
+
+        
 
         # Delete all videos
         if os.path.exists(UPLOAD_DIR):
@@ -545,7 +564,8 @@ async def display_velocity(request: Request):
         if os.path.exists(RECTANGLE_DIR):
             shutil.rmtree(RECTANGLE_DIR)
             os.makedirs(RECTANGLE_DIR)
-            
+        
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
 

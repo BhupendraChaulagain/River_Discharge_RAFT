@@ -3,7 +3,7 @@ import time
 import os
 from dotenv import load_dotenv
 
-
+VELOCITY_DATA_DIR = "velocity_data"
 load_dotenv()
 # RTSP URL with authentication
 rtsp_url = os.getenv("RTSP_URL")
@@ -11,8 +11,8 @@ rtsp_url = os.getenv("RTSP_URL")
 # Captured video duration
 video_duration = 3
 
-# Set the interval of 10 minutes in seconds
-capture_interval = 100  
+# Set the interval of 10 minutes
+capture_interval = 70  
 
 # Output directory for captured videos
 output_dir = os.path.join(os.getcwd(), "uploads")
@@ -22,6 +22,8 @@ os.makedirs(output_dir, exist_ok=True)
 target_resolution = (1280, 720)
 
 # Initialization of video capture
+
+
 def initialize_capture():
     cap = cv2.VideoCapture(rtsp_url)
     if not cap.isOpened():
@@ -36,6 +38,7 @@ def flush_buffer(cap, frames_to_flush=10):
 
 # Capturing video
 def capture_video(video_index):
+    
     # Initializing capture
     cap = initialize_capture()
     if not cap:
