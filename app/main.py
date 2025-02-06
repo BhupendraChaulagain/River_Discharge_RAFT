@@ -1,5 +1,5 @@
 from fastapi import FastAPI,  Request, Form, HTTPException
-from fastapi.responses import HTMLResponse, RedirectResponse, FileResponse 
+from fastapi.responses import HTMLResponse, RedirectResponse, FileResponse, StreamingResponse 
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 import os
@@ -25,8 +25,10 @@ from app.process_mult_videos import process_multiple_videos
 from app.velocity_append import start_velocity_monitoring
 from dotenv import load_dotenv
 from app import config
-
-
+from app.clear_create_dir import clear_and_create_directory
+load_dotenv()
+# RTSP URL with authentication
+rtsp_url = os.getenv("RTSP_URL")
 
 
 
@@ -51,38 +53,20 @@ STAT_DIR = "static"
 VELOCITY_DATA_DIR = "velocity_data"
 RECTANGLE_DIR = 'rectangle'
 
-
-
-
-
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 os.makedirs(FRAMES_DIR, exist_ok=True)
 os.makedirs(VELOCITY_DATA_DIR, exist_ok=True)
 os.makedirs(RECTANGLE_DIR, exist_ok=True)
 
-
 templates = Jinja2Templates(directory="templates")
-
-
-
 
 @app.on_event("startup")
 def start_background_tasks():
     try:
-        if os.path.exists(VELOCITY_DATA_DIR):
-            shutil.rmtree(VELOCITY_DATA_DIR)
-        if os.path.exists(UPLOAD_DIR):
-            shutil.rmtree(UPLOAD_DIR)
-        if os.path.exists(FRAMES_DIR):
-            shutil.rmtree(FRAMES_DIR)
-
-        if os.path.exists(RECTANGLE_DIR):
-            shutil.rmtree(RECTANGLE_DIR)
-
-        os.makedirs(VELOCITY_DATA_DIR, exist_ok=True)
-        os.makedirs(UPLOAD_DIR, exist_ok=True)
-        os.makedirs(FRAMES_DIR, exist_ok=True)
-        os.makedirs(RECTANGLE_DIR, exist_ok=True)  # Recreate directory
+        clear_and_create_directory(UPLOAD_DIR)
+        clear_and_create_directory(FRAMES_DIR)
+        clear_and_create_directory(RECTANGLE_DIR)
+        clear_and_create_directory(VELOCITY_DATA_DIR)
     except Exception as e:
         print(f"Error initializing velocity directory: {str(e)}")
     video_processing_thread = threading.Thread(
@@ -102,9 +86,6 @@ def start_background_tasks():
 
 @app.get("/", response_class=HTMLResponse)
 async def render_home(request: Request):
-    if os.path.exists(VELOCITY_DATA_DIR):
-            shutil.rmtree(VELOCITY_DATA_DIR)
-            os.makedirs(VELOCITY_DATA_DIR)
     return templates.TemplateResponse("index.html", {"request": request})
 
 capture_thread = None
@@ -114,8 +95,6 @@ first_video_region_params = None  # Initialize globally
 processed_videos = set()
 
 
-
-
 def continuous_video_processing():
     # Global variables to store region parameters
     global first_video_region_params
@@ -123,13 +102,7 @@ def continuous_video_processing():
     
     while True:
         # Default region parameters if no first video processed
-        default_region_params = {
-            'x_start': 0,
-            'y_start': 0,
-            'x_end': 640,
-            'y_end': 480,
-            'num_segments': 4,
-            'scaling_factor': 1.0,
+        default_region_params = {'x_start': 0,'y_start': 0,'x_end': 640,'y_end': 480,'num_segments': 4,'scaling_factor': 1.0,
         }
         
         # Find the most recent videos in uploads directory
@@ -209,9 +182,6 @@ def continuous_video_processing():
         time.sleep(30)
 
 
-
-
-
 @app.post("/start_capture")
 async def start_capture_endpoint(request: Request):
     
@@ -219,8 +189,6 @@ async def start_capture_endpoint(request: Request):
     
     try:
         global capture_thread
-
-        
 
         if not capture_thread or not capture_thread.is_alive():
             capture_thread = threading.Thread(target=start_capture, daemon=True)
@@ -238,8 +206,6 @@ async def start_capture_endpoint(request: Request):
                 break
             time.sleep(1)  
 
-        
-        
         if not captured_files:
             return JSONResponse(content={"status": "No videos captured yet"}, status_code=400)
 
@@ -388,9 +354,7 @@ async def show_image(request: Request, frame_url: str = None, segmented_frame_ur
     
 
 
-    return templates.TemplateResponse("show_image.html", {"request": request, 
-                                                           "frame_url": frame_url, 
-                                                           "segmented_frame_url": segmented_frame_url, 
+    return templates.TemplateResponse("show_image.html", {"request": request, "frame_url": frame_url, "segmented_frame_url": segmented_frame_url, 
                                                            "x_start": x_start, "y_start": y_start, 
                                                            "x_end": x_end, "y_end": y_end})
 
@@ -418,16 +382,10 @@ async def calculate_scaling_factor(
         config.fps = fps 
         request.session["scaling_factor"] = scaling_factor
 
-        
-        
-
         return RedirectResponse("/submit-arrowed-image", status_code=302)
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error processing data: {str(e)}")
-
-
-    
 
 
 @app.get("/submit-arrowed-image")
@@ -511,16 +469,49 @@ async def submit_arrowed_image(request: Request):
     except Exception as e:
         return {"error": f"Error drawing arrows or saving the image: {str(e)}"}
 
-    #delete_all_files_in_directory(FRAMES_DIR)
-    #print("All files in the frames directory have been deleted.")
-
-    
     session['converted_velocity'] = converted_velocity
     
     image_url = f"/rectangle/{arrowed_image_filename}"
 
    
-    return RedirectResponse(url=f"/display-arrowed-image/?image_url={image_url}", status_code=302)
+    return RedirectResponse(url=f"/video_feed", status_code=302)
+
+@app.get("/video_feed")
+async def video_feed():
+    return StreamingResponse(generate_video_frames(), media_type="multipart/x-mixed-replace; boundary=frame")
+
+def generate_video_frames():
+    cap = cv2.VideoCapture(rtsp_url)
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            break
+        
+        _, buffer = cv2.imencode('.jpg', frame)
+        yield (b'--frame\r\n'
+               b'Content-Type: image/jpeg\r\n\r\n' + buffer.tobytes() + b'\r\n')
+        
+
+@app.get("/api/current-velocity")
+async def get_current_velocity():
+    
+    try:
+        df = pd.read_csv(os.path.join(VELOCITY_DATA_DIR, "velocity_data.csv"))
+        latest_data = df.iloc[-1]  # Get the most recent data
+        
+        # Convert to dictionary format
+        segment_velocities = {}
+        for segment in range(1, config.num_segments + 1):
+            segment_data = latest_data[latest_data['segment'] == segment]
+            if not segment_data.empty:
+                velocity = np.sqrt(segment_data['velocity_x']**2 + segment_data['velocity_y']**2)
+                segment_velocities[str(segment)] = float(velocity * config.scaling_factor * config.fps)
+        
+        return segment_velocities
+    except Exception as e:
+        print(f"Error reading velocity data: {e}")
+        return {}
+
 
 
 @app.get("/display-arrowed-image", response_class=HTMLResponse)
@@ -550,21 +541,10 @@ async def display_velocity(request: Request):
         
 
         # Delete all videos
-        if os.path.exists(UPLOAD_DIR):
-            shutil.rmtree(UPLOAD_DIR)
-            os.makedirs(UPLOAD_DIR)
-            
+        clear_and_create_directory(UPLOAD_DIR)
+        clear_and_create_directory(FRAMES_DIR)
+        clear_and_create_directory(RECTANGLE_DIR)
 
-        # Delete all frames
-        if os.path.exists(FRAMES_DIR):
-            shutil.rmtree(FRAMES_DIR)
-            os.makedirs(FRAMES_DIR)
-            
-
-        if os.path.exists(RECTANGLE_DIR):
-            shutil.rmtree(RECTANGLE_DIR)
-            os.makedirs(RECTANGLE_DIR)
-        
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
