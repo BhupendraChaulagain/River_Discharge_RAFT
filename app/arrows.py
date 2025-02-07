@@ -39,5 +39,5 @@ def draw_velocity_arrows_based_on_segments(frame, segment_avg_velocity, total_y_
             thickness=5,
             tipLength=0.2
         )
-
+        
     return frame, area

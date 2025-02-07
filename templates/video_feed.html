@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Video Feed</title>
+</head>
+<body>
+    <h1 style="text-align: center;">Live Video Feed</h1>
+    <div class="video-container">
+        <img 
+            src="/video_feed" 
+            alt="Video Feed" 
+            class="video-feed"
+            onerror="handleVideoError()"
+            onload="handleVideoLoad()"
+        >
+        <div class="error-message" id="errorMessage">
+            Failed to load video feed. Please refresh the page.
+        </div>
+    </div>
+    <div class="controls">
+        <button class="stop-button" onclick="stopRecording()">Stop Recording</button>
+    </div>
+
+    <script>
+        function handleVideoError() {
+            document.getElementById('errorMessage').style.display = 'block';
+            document.querySelector('.video-feed').style.display = 'none';
+        }
+
+        function handleVideoLoad() {
+            document.getElementById('errorMessage').style.display = 'none';
+            document.querySelector('.video-feed').style.display = 'block';
+        }
+
+        function stopRecording() {
+            
+            fetch('/display-velocity', {
+                method: 'GET',
+            })
+            .then(response => {
+                if (response.ok) {
+                    window.location.href = '/display-velocity';
+                } else {
+                    console.error('Failed to stop recording');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+        }
+
+        
+        let videoImg = document.querySelector('.video-feed');
+        let reconnectAttempts = 0;
+        const maxReconnectAttempts = 5;
+
+        videoImg.addEventListener('error', function() {
+            if (reconnectAttempts < maxReconnectAttempts) {
+                setTimeout(() => {
+                    reconnectAttempts++;
+                    videoImg.src = '/video_feed?' + new Date().getTime();
+                }, 2000);
+            } else {
+                handleVideoError();
+            }
+        });
+    </script>
+</body>
+</html>

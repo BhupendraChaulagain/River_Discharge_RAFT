@@ -9,7 +9,7 @@ load_dotenv()
 rtsp_url = os.getenv("RTSP_URL")
 
 # Captured video duration
-video_duration = 3
+video_duration = 2
 
 # Set the interval of 10 minutes
 capture_interval = 70  

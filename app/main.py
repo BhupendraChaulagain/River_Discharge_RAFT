@@ -26,11 +26,15 @@ from app.velocity_append import start_velocity_monitoring
 from dotenv import load_dotenv
 from app import config
 from app.clear_create_dir import clear_and_create_directory
+import csv
+import logging
+import asyncio
 load_dotenv()
 # RTSP URL with authentication
 rtsp_url = os.getenv("RTSP_URL")
 
-
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Initialization of app and directories
 app = FastAPI()
@@ -128,7 +132,7 @@ def continuous_video_processing():
                         FRAMES_DIR, 
                         start_time, 
                         end_time, 
-                        frame_count=5
+                        frame_count=2
                     )
 
                     # Use first video's parameters or default
@@ -229,7 +233,7 @@ async def start_capture_endpoint(request: Request):
         start_time, end_time = 0.2, 1.2 
         if duration < end_time:
             return JSONResponse(content={"status": f"Video duration is too short. Duration: {duration}s, Requested End Time: {end_time}s"}, status_code=400) 
-        frame_paths = extract_frames_by_time(first_video_path, FRAMES_DIR, start_time, end_time, frame_count=5)
+        frame_paths = extract_frames_by_time(first_video_path, FRAMES_DIR, start_time, end_time, frame_count=2)
         first_frame_path = frame_paths[0]
 
        
@@ -474,42 +478,133 @@ async def submit_arrowed_image(request: Request):
     image_url = f"/rectangle/{arrowed_image_filename}"
 
    
-    return RedirectResponse(url=f"/video_feed", status_code=302)
+    return RedirectResponse(url="/video_feed_page", status_code=302)
 
+@app.get("/video_feed_page", response_class=HTMLResponse)
+async def video_feed_page(request: Request):
+    return templates.TemplateResponse("video_feed.html", {"request": request})
+
+def read_csv(csv_file_path):
+    velocities = []
+    with open(csv_file_path, newline='') as csvfile:
+        csvreader = csv.DictReader(csvfile)
+        for row in csvreader:
+            video_name = row.get('video_name', '')
+            segment_data = {key: value for key, value in row.items() if key.startswith('segment')}
+            
+            if video_name and segment_data:
+                velocities.append({
+                    'video_name': video_name,
+                    'segments': segment_data
+                })
+    return velocities
+
+# Async function to get velocities from CSV
+async def get_velocity_from_csv():
+    velocities = []
+    csv_file_path = "velocity_data/velocity.csv"
+    
+    if os.path.exists(csv_file_path):
+        try:
+            # Offload the blocking read_csv to a thread
+            velocities = await asyncio.to_thread(read_csv, csv_file_path)
+        except Exception as e:
+            logger.error(f"Error reading CSV: {e}")
+    else:
+        logger.warning("velocity.csv not found.")
+    
+    return velocities
+
+# Video stream route
 @app.get("/video_feed")
-async def video_feed():
-    return StreamingResponse(generate_video_frames(), media_type="multipart/x-mixed-replace; boundary=frame")
+async def video_feed(request: Request):
+    cap = cv2.VideoCapture(rtsp_url) #use a video file path
+    if not cap.isOpened():
+        logger.error("Error: Could not open video stream.")
+        raise HTTPException(status_code=500, detail="Failed to open video stream.")
+    
+    cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
+    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
 
-def generate_video_frames():
-    cap = cv2.VideoCapture(rtsp_url)
-    while True:
-        ret, frame = cap.read()
-        if not ret:
-            break
-        
-        _, buffer = cv2.imencode('.jpg', frame)
-        yield (b'--frame\r\n'
-               b'Content-Type: image/jpeg\r\n\r\n' + buffer.tobytes() + b'\r\n')
-        
+    session = request.session
+
+    # Extract session variables
+    x_start = session.get('x_start')
+    y_start = session.get('y_start')
+    x_end = session.get('x_end')
+    y_end = session.get('y_end')
+    num_segments = session.get('num_segments')
+
+    async def generate_frames():
+        try:
+            while cap.isOpened():
+                ret, frame = cap.read()
+                if not ret:
+                    logger.error("Error: Failed to read frame.")
+                    break
+                frame = cv2.resize(frame, (1280, 720))
+                try:
+                # Read velocity data from the CSV file asynchronously
+                    csv_path = "velocity_data/velocity.csv"
+                    if os.path.exists(csv_path):
+                        df = pd.read_csv(csv_path)
+                        if not df.empty:
+                            latest_data = df.iloc[-1]
+                            velocities = {
+                                int(k.split('_')[-1]): float(v)
+                                for k, v in latest_data.items()
+                                if k.startswith('segment_')
+                            }
+                            
+                            # Draw arrows on frame
+                            frame, _ = draw_velocity_arrows_based_on_segments(
+                                frame,
+                                velocities,
+                                1,  # total_y_velocity
+                                x_start, y_start, x_end, y_end,
+                                num_segments
+                            )
+                    ret, buffer = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 90])
+                    if not ret:
+                        continue
+                    
+                    frame_bytes = buffer.tobytes()
+                    yield (b'--frame\r\n'
+                           b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n\r\n')
+                    
+                    # Add small delay to control frame rate
+                    await asyncio.sleep(0.03)  # ~30 FPS
+
+                except Exception as e:
+                    logger.error(f"Error processing frame: {e}")
+                    continue
+        finally:
+            cap.release()    
+    return StreamingResponse(generate_frames(), media_type="multipart/x-mixed-replace; boundary=frame")
 
 @app.get("/api/current-velocity")
 async def get_current_velocity():
-    
     try:
-        df = pd.read_csv(os.path.join(VELOCITY_DATA_DIR, "velocity_data.csv"))
-        latest_data = df.iloc[-1]  # Get the most recent data
+        csv_path = "velocity_data/velocity.csv"
+        if not os.path.exists(csv_path):
+            return {}
+            
+        df = pd.read_csv(csv_path)
+        if df.empty:
+            return {}
+            
+        latest_data = df.iloc[-1]
+        velocities = {}
         
-        # Convert to dictionary format
-        segment_velocities = {}
-        for segment in range(1, config.num_segments + 1):
-            segment_data = latest_data[latest_data['segment'] == segment]
-            if not segment_data.empty:
-                velocity = np.sqrt(segment_data['velocity_x']**2 + segment_data['velocity_y']**2)
-                segment_velocities[str(segment)] = float(velocity * config.scaling_factor * config.fps)
-        
-        return segment_velocities
+        for col in latest_data.index:
+            if col.startswith('segment_'):
+                segment_num = int(col.split('_')[-1])
+                velocity = float(latest_data[col])
+                velocities[segment_num] = velocity * config.scaling_factor * config.fps
+                
+        return velocities
     except Exception as e:
-        print(f"Error reading velocity data: {e}")
+        logger.error(f"Error reading velocity data: {e}")
         return {}
 
 
