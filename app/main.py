@@ -474,7 +474,7 @@ async def submit_arrowed_image(request: Request):
         return {"error": f"Error drawing arrows or saving the image: {str(e)}"}
 
     session['converted_velocity'] = converted_velocity
-    
+    session['total_y_velocity'] = total_segment_velocity_y 
     image_url = f"/rectangle/{arrowed_image_filename}"
 
    
@@ -534,7 +534,7 @@ async def video_feed(request: Request):
     x_end = session.get('x_end')
     y_end = session.get('y_end')
     num_segments = session.get('num_segments')
-
+    total_y_velocity = session.get('total_y_velocity')
     async def generate_frames():
         try:
             while cap.isOpened():
@@ -560,7 +560,7 @@ async def video_feed(request: Request):
                             frame, _ = draw_velocity_arrows_based_on_segments(
                                 frame,
                                 velocities,
-                                1,  # total_y_velocity
+                                total_y_velocity,
                                 x_start, y_start, x_end, y_end,
                                 num_segments
                             )
