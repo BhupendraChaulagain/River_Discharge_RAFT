@@ -609,7 +609,7 @@ async def get_current_velocity():
 
 
 
-@app.get("/display-arrowed-image", response_class=HTMLResponse)
+"""@app.get("/display-arrowed-image", response_class=HTMLResponse)
 async def display_arrowed_image(request: Request, image_url: str):
     
     session = request.session
@@ -619,7 +619,7 @@ async def display_arrowed_image(request: Request, image_url: str):
         "request": request,
         "image_url": image_url,
         "segment_avg_velocity": converted_velocity,
-      })
+      }) """
 
 VELOCITY_CSV_PATH = "velocity_data/velocity.csv"
 @app.get("/display-velocity", response_class=HTMLResponse)

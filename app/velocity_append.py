@@ -5,6 +5,7 @@ from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 import numpy as np
 from app import config
+from datetime import datetime
 class VelocityDataHandler(FileSystemEventHandler):
     def __init__(self, velocity_data_dir, output_file):
         self.velocity_data_dir = velocity_data_dir
@@ -42,6 +43,12 @@ class VelocityDataHandler(FileSystemEventHandler):
                 
             # Calculate average velocity across all segments
             #row_data['average_velocity'] = np.mean(list(segment_velocities.values()))
+
+            # Display current date and time for research purpose
+            date = datetime.now()
+
+            row_data['date'] = date.strftime('%Y-%m-%d')
+            row_data['time'] = date.strftime('%H:%M:%S')
             
             # Create or append to the consolidated CSV
             if os.path.exists(self.output_file):
