@@ -252,3 +252,22 @@ form {
     justify-content: center;
 
 }
+
+.clear_data{
+    width:auto;
+}
+
+.download {
+    display: inline-block;
+    padding: 10px 15px;
+    background-color: #007bff; /* Bootstrap primary color */
+    color: white;
+    text-decoration: none;
+    border-radius: 5px;
+    font-weight: bold;
+    transition: background-color 0.3s ease;
+}
+
+.download:hover {
+    background-color: #0056b3; /* Darker shade on hover */
+}

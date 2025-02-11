@@ -17,7 +17,7 @@ from app.arrows import draw_velocity_arrows_based_on_segments
 from app.scale import calculate_scale
 from starlette.middleware.sessions import SessionMiddleware
 from app.delete_frames import delete_all_files_in_directory
-from app.video_capture import start_capture
+from app.video_capture import start_capture , stop_capture
 import time
 from fastapi.responses import JSONResponse
 from app.video_save import video_save
@@ -80,16 +80,19 @@ def start_background_tasks():
     video_processing_thread.start()
     
     # Starting velocity monitoring thread
-    velocity_monitor_thread = threading.Thread(
-        target=start_velocity_monitoring,
-        args=(VELOCITY_DATA_DIR,),  
-        daemon=True
-    )
-    velocity_monitor_thread.start()
+    # velocity_monitor_thread = threading.Thread(
+    # target=start_velocity_monitoring,
+    # args=(VELOCITY_DATA_DIR,),  
+    # daemon=True
+   # )
+    # velocity_monitor_thread.start()
 
 
 @app.get("/", response_class=HTMLResponse)
 async def render_home(request: Request):
+    
+
+
     return templates.TemplateResponse("index.html", {"request": request})
 
 capture_thread = None
@@ -100,6 +103,7 @@ processed_videos = set()
 
 
 def continuous_video_processing():
+    print("Its inside video processing")
     # Global variables to store region parameters
     global first_video_region_params
     
@@ -126,7 +130,7 @@ def continuous_video_processing():
             if video_save(latest_video):
                 try:
                     # Extract frames
-                    start_time, end_time = 0.5, 1.5
+                    start_time, end_time = 0.2, 0.8
                     frame_paths = extract_frames_by_time(
                         latest_video, 
                         FRAMES_DIR, 
@@ -137,7 +141,7 @@ def continuous_video_processing():
 
                     # Use first video's parameters or default
 
-                    time.sleep(40)  #wait for 30 seconds so can get real data
+                    time.sleep(40)  #wait for 40 seconds so can get real data
                     region_params = first_video_region_params or default_region_params
 
                     # Use stored or default region parameters
@@ -189,6 +193,15 @@ def continuous_video_processing():
 @app.post("/start_capture")
 async def start_capture_endpoint(request: Request):
     
+    print("We are in start_capture")
+    velocity_monitor_thread = threading.Thread(
+    target=start_velocity_monitoring,
+    args=(VELOCITY_DATA_DIR,),  
+    daemon=True
+   )
+    velocity_monitor_thread.start()
+
+    print("Velocity monitoe inside start capture")
     session = request.session
     
     try:
@@ -230,7 +243,7 @@ async def start_capture_endpoint(request: Request):
         cap.release()
 
         # Extract the first frame from the video
-        start_time, end_time = 0.2, 1.2 
+        start_time, end_time = 0.2, 0.8 
         if duration < end_time:
             return JSONResponse(content={"status": f"Video duration is too short. Duration: {duration}s, Requested End Time: {end_time}s"}, status_code=400) 
         frame_paths = extract_frames_by_time(first_video_path, FRAMES_DIR, start_time, end_time, frame_count=2)
@@ -246,9 +259,6 @@ async def start_capture_endpoint(request: Request):
 
 @app.get("/frame", response_class=HTMLResponse)
 async def frame(request: Request, frame_url: str):
-    """
-    Display the frame to select the region of interest.
-    """
     try:
         return templates.TemplateResponse("frame.html", {"request": request, "frame_url": frame_url})
     except Exception as e:
@@ -445,11 +455,11 @@ async def submit_arrowed_image(request: Request):
             segment: (np.sqrt(segment_avg_velocity_x[segment]**2 + segment_avg_velocity_y[segment]**2))*(scaling_factor*fps)
             for segment in segment_avg_velocity_x
     }
-        converted_velocity = {}
+        #converted_velocity = {}
 
         # taking data from right
-        for original_segment, new_segment in zip(range(num_segments, 0, -1), range(1, num_segments + 1)):
-            converted_velocity[new_segment] = segment_avg_velocity[original_segment]
+        #for original_segment, new_segment in zip(range(num_segments, 0, -1), range(1, num_segments + 1)):
+         #   converted_velocity[new_segment] = segment_avg_velocity[original_segment]
             
     except Exception as e:
         return {"error": f"Error reading or processing the velocity CSV: {str(e)}"}
@@ -463,7 +473,7 @@ async def submit_arrowed_image(request: Request):
     try:
         # Drawing velocity arrows based on segments
         frame_with_arrows, _ = draw_velocity_arrows_based_on_segments(
-            frame, converted_velocity, total_segment_velocity_y, x_start, y_start, x_end, y_end, num_segments
+            frame, segment_avg_velocity, total_segment_velocity_y, x_start, y_start, x_end, y_end, num_segments
         )
 
         # Saving the arrowed image
@@ -473,7 +483,7 @@ async def submit_arrowed_image(request: Request):
     except Exception as e:
         return {"error": f"Error drawing arrows or saving the image: {str(e)}"}
 
-    session['converted_velocity'] = converted_velocity
+    session['segment_avg_velocity'] = segment_avg_velocity
     session['total_y_velocity'] = total_segment_velocity_y 
     image_url = f"/rectangle/{arrowed_image_filename}"
 
@@ -625,26 +635,14 @@ VELOCITY_CSV_PATH = "velocity_data/velocity.csv"
 @app.get("/display-velocity", response_class=HTMLResponse)
 async def display_velocity(request: Request):
 
-    global capture_thread, video_capture
     try:
         # Stop the capturing process
-        if capture_thread:
-            capture_thread = False
-            # Logic to stop capture, e.g., closing a camera stream
-            print("Video capture stopped.")
-
-        
-
-        # Delete all videos
-        clear_and_create_directory(UPLOAD_DIR)
-        clear_and_create_directory(FRAMES_DIR)
-        clear_and_create_directory(RECTANGLE_DIR)
-
+        stop_capture()
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
 
-
+    
     if os.path.exists(VELOCITY_CSV_PATH):
         # Load the CSV file into a DataFrame
         velocity_data = pd.read_csv(VELOCITY_CSV_PATH)
@@ -666,3 +664,19 @@ def download_velocity():
         return FileResponse(VELOCITY_CSV_PATH, media_type="text/csv", filename="velocity.csv")
     else:
         return {"error": "Velocity file not found."}
+ 
+@app.post("/clear-velocity-data")
+async def clear_velocity_data():
+    try:
+        # Delete all videos
+        clear_and_create_directory(UPLOAD_DIR)
+        clear_and_create_directory(FRAMES_DIR)
+        clear_and_create_directory(RECTANGLE_DIR)
+        clear_and_create_directory(VELOCITY_DATA_DIR)
+        print("Velocity data cleared successfully")
+        
+        # Redirect back to the velocity display page
+        return RedirectResponse(url="/display-velocity", status_code=303)
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error clearing data: {str(e)}")

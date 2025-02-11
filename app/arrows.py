@@ -14,9 +14,10 @@ def draw_velocity_arrows_based_on_segments(frame, segment_avg_velocity, total_y_
 
     for segment, velocity in segment_avg_velocity.items():
         # horizontal space finding
-        segment_x_end = x_end - (segment - 1) * segment_width  
-        segment_x_center = segment_x_end - segment_width // 2  # Center of the segment
-        cv2.line(frame, (segment_x_end, y_start), (segment_x_end, y_end), (0, 255, 255), 2)
+        
+        segment_x_start = x_start + (segment-1) * segment_width  
+        segment_x_center = segment_x_start + segment_width // 2  # Center of the segment
+        cv2.line(frame, (segment_x_start, y_start), (segment_x_start, y_end), (0, 255, 255), 2)
         #arrow making on the basis of velocity in y direction
 
         if total_y_velocity >= 0:

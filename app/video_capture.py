@@ -22,7 +22,7 @@ os.makedirs(output_dir, exist_ok=True)
 target_resolution = (1280, 720)
 
 # Initialization of video capture
-
+is_capturing = None
 
 def initialize_capture():
     cap = cv2.VideoCapture(rtsp_url)
@@ -61,6 +61,7 @@ def capture_video(video_index):
         ret, frame = cap.read()
         if not ret:
             print("Error: Failed to capture frame. Retrying...")
+            cap = cv2.VideoCapture(rtsp_url)
             time.sleep(0.1)  # Short pause before retrying
             continue
 
@@ -75,8 +76,10 @@ def capture_video(video_index):
 
 # Infinite loop to capture videos continuously
 def start_capture():
+    global is_capturing
+    is_capturing = True
     video_index = 1
-    while True:
+    while is_capturing:
         print(f"Starting capture for video {video_index}...")
         success = capture_video(video_index)
         if not success:
@@ -84,3 +87,8 @@ def start_capture():
         video_index += 1
         print(f"Waiting for {capture_interval} seconds before the next capture...")
         time.sleep(capture_interval)
+
+def stop_capture():
+    global is_capturing
+    is_capturing = False
+    print("Stopping the video capture.")
