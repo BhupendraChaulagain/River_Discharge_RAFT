@@ -7,11 +7,14 @@ import os
 import sys
 from collections import deque
 from app.delete_frames import delete_all_files_in_directory
+from app.clear_create_dir import clear_and_create_directory
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), 'core')))
 # Import RAFT components
 from core.raft import RAFT
 from core.utils.utils import InputPadder
+
+UPLOAD_DIR = "uploads"
 
 def load_model(model_path):
     """Load the pre-trained RAFT model."""
@@ -128,6 +131,7 @@ def calculate_velocity(frame_folder, output_csv, model_path, x_range=(0, 640), y
 
     
     delete_all_files_in_directory(frame_folder)
+    
     
     output_directory = os.path.dirname(output_csv)
     if not os.path.exists(output_directory):

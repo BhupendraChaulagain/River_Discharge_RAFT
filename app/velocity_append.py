@@ -19,10 +19,6 @@ class VelocityDataHandler(FileSystemEventHandler):
             # Read the velocity data
             df = pd.read_csv(velocity_file)
             scaling_factor, fps, num_segments = config.get_scaling_factor()
-
-            print("Scaling factor:", scaling_factor)
-            print("fps inside process_velocity_file :", fps)
-            
             # Calculate segment averages
             segment_avg_velocity_x = df.groupby('segment')['velocity_x'].mean()
             segment_avg_velocity_y = df.groupby('segment')['velocity_y'].mean()
@@ -35,7 +31,7 @@ class VelocityDataHandler(FileSystemEventHandler):
             
             # Create a row for the consolidated data
             video_name = os.path.basename(velocity_file).replace('velocity_data_', '').replace('.csv', '')
-            row_data = {'video_name': f'video_{video_name}'}
+            row_data = {'video_name': f'Video_{video_name}'}
             
             # Add segment velocities
             for segment, velocity in segment_velocities.items():
@@ -72,6 +68,8 @@ class VelocityDataHandler(FileSystemEventHandler):
                 self.processed_files.add(event.src_path)
 
 def start_velocity_monitoring(velocity_data_dir):
+
+    
    
     output_file = os.path.join(velocity_data_dir, 'velocity.csv')
     event_handler = VelocityDataHandler(velocity_data_dir, output_file)

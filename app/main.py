@@ -50,7 +50,6 @@ app.add_middleware(
     secret_key=os.getenv("SECRET_KEY"),  
 )
 
-
 UPLOAD_DIR = "uploads"
 FRAMES_DIR = "static/frames"
 STAT_DIR = "static"
@@ -73,26 +72,10 @@ def start_background_tasks():
         clear_and_create_directory(VELOCITY_DATA_DIR)
     except Exception as e:
         print(f"Error initializing velocity directory: {str(e)}")
-    video_processing_thread = threading.Thread(
-        target=continuous_video_processing, 
-        daemon=True
-    )
-    video_processing_thread.start()
-    
-    # Starting velocity monitoring thread
-    # velocity_monitor_thread = threading.Thread(
-    # target=start_velocity_monitoring,
-    # args=(VELOCITY_DATA_DIR,),  
-    # daemon=True
-   # )
-    # velocity_monitor_thread.start()
-
 
 @app.get("/", response_class=HTMLResponse)
 async def render_home(request: Request):
     
-
-
     return templates.TemplateResponse("index.html", {"request": request})
 
 capture_thread = None
@@ -103,14 +86,18 @@ processed_videos = set()
 
 
 def continuous_video_processing():
-    print("Its inside video processing")
     # Global variables to store region parameters
-    global first_video_region_params
-    
+    global first_video_region_params, processed_videos
     
     while True:
         # Default region parameters if no first video processed
-        default_region_params = {'x_start': 0,'y_start': 0,'x_end': 640,'y_end': 480,'num_segments': 4,'scaling_factor': 1.0,
+        default_region_params = {
+            'x_start': 0,
+            'y_start': 0,
+            'x_end': 640,
+            'y_end': 480,
+            'num_segments': 4,
+            'scaling_factor': 1.0
         }
         
         # Find the most recent videos in uploads directory
@@ -129,6 +116,14 @@ def continuous_video_processing():
             # Check if video is fully saved
             if video_save(latest_video):
                 try:
+                    # Calculate video index before processing
+                    video_index = len(processed_videos) + 1
+                    velocity_data_path = os.path.join(VELOCITY_DATA_DIR, f"velocity_data_{video_index}.csv")
+
+                    # Skip if velocity file already exists
+                    if os.path.exists(velocity_data_path):
+                        continue
+
                     # Extract frames
                     start_time, end_time = 0.2, 0.8
                     frame_paths = extract_frames_by_time(
@@ -139,31 +134,20 @@ def continuous_video_processing():
                         frame_count=2
                     )
 
+                    # Wait for real data
+                    time.sleep(40)
+
                     # Use first video's parameters or default
-
-                    time.sleep(40)  #wait for 40 seconds so can get real data
                     region_params = first_video_region_params or default_region_params
-
-                    # Use stored or default region parameters
-                    x_start = region_params['x_start']
-                    y_start = region_params['y_start']
-                    x_end = region_params['x_end']
-                    y_end = region_params['y_end']
-                    num_segments = region_params['num_segments']
-                    scaling_factor = region_params['scaling_factor']
-
                     
                     # If first video and no parameters stored, print warning
                     if first_video_region_params is None:
                         print("Warning: Using default region parameters")
                     
-                    
                     # Get video FPS
-                    fps = round(cv2.VideoCapture(latest_video).get(cv2.CAP_PROP_FPS))
-
-                    # Unique velocity data filename
-                    video_index = len(processed_videos) + 1
-                    velocity_data_path = os.path.join(VELOCITY_DATA_DIR, f"velocity_data_{video_index}.csv")
+                    cap = cv2.VideoCapture(latest_video)
+                    fps = round(cap.get(cv2.CAP_PROP_FPS))
+                    cap.release()
 
                     # Calculate velocity
                     model_path = os.path.join(STAT_DIR, "raft-sintel.pth")
@@ -171,28 +155,38 @@ def continuous_video_processing():
                         frame_folder=FRAMES_DIR,
                         output_csv=velocity_data_path,
                         model_path=model_path,
-                        x_range=(x_start, x_end),
-                        y_range=(y_start, y_end),
-                        num_segments=num_segments
+                        x_range=(region_params['x_start'], region_params['x_end']),
+                        y_range=(region_params['y_start'], region_params['y_end']),
+                        num_segments=region_params['num_segments']
                     )
-
-                    
 
                     # Mark video as processed
                     processed_videos.add(video_filename)
-                    
-                    print(f"Processed video: {latest_video}")
+                    print(f"Successfully processed video: {latest_video}")
+                    print(f"Velocity data saved to: {velocity_data_path}")
                     
                 except Exception as e:
-                    print(f"Error processing video: {e}")
+                    print(f"Error processing video {video_filename}: {e}")
+                    continue
 
-        
+        # Wait before checking for new videos
         time.sleep(30)
 
 
 @app.post("/start_capture")
 async def start_capture_endpoint(request: Request):
     
+    global processed_videos, captured_files
+    processed_videos = set()
+    for file in os.listdir(VELOCITY_DATA_DIR):
+        if file.startswith('velocity_data_') and file.endswith('.csv'):
+            os.remove(os.path.join(VELOCITY_DATA_DIR, file))
+
+    video_processing_thread = threading.Thread(
+        target=continuous_video_processing, 
+        daemon=True
+    )
+    video_processing_thread.start()
     print("We are in start_capture")
     velocity_monitor_thread = threading.Thread(
     target=start_velocity_monitoring,
@@ -352,21 +346,14 @@ async def select_region_endpoint(request: Request, frame_file: str = Form(...),
     session['y_end'] = y_end
     session['num_segments'] = num_segments
 
-    
-
-    
     redirect_url = f"/show_image?frame_url=/static/frames/{frame_file}&segmented_frame_url=/rectangle/{rect_image_filename}&x_start={x_start}&y_start={y_start}&x_end={x_end}&y_end={y_end}&num_segments={num_segments}"    
     print(f"Redirecting to: {redirect_url}")  
     return RedirectResponse(url=redirect_url, status_code=302)
-
 
 @app.get("/show_image")
 async def show_image(request: Request, frame_url: str = None, segmented_frame_url: str = None, 
                      x_start: int = 0, y_start: int = 0, x_end: int = 0, y_end: int = 0, real_world_distance: float = 0.0):
     print(f"Received frame_url: {frame_url}, segmented_frame_url: {segmented_frame_url}")
-
-    
-
 
     return templates.TemplateResponse("show_image.html", {"request": request, "frame_url": frame_url, "segmented_frame_url": segmented_frame_url, 
                                                            "x_start": x_start, "y_start": y_start, 
@@ -456,7 +443,6 @@ async def submit_arrowed_image(request: Request):
             for segment in segment_avg_velocity_x
     }
         #converted_velocity = {}
-
         # taking data from right
         #for original_segment, new_segment in zip(range(num_segments, 0, -1), range(1, num_segments + 1)):
          #   converted_velocity[new_segment] = segment_avg_velocity[original_segment]
@@ -616,21 +602,7 @@ async def get_current_velocity():
     except Exception as e:
         logger.error(f"Error reading velocity data: {e}")
         return {}
-
-
-
-"""@app.get("/display-arrowed-image", response_class=HTMLResponse)
-async def display_arrowed_image(request: Request, image_url: str):
     
-    session = request.session
-    converted_velocity = session.get('converted_velocity', {})
-    
-    return templates.TemplateResponse("average_velocity.html", {
-        "request": request,
-        "image_url": image_url,
-        "segment_avg_velocity": converted_velocity,
-      }) """
-
 VELOCITY_CSV_PATH = "velocity_data/velocity.csv"
 @app.get("/display-velocity", response_class=HTMLResponse)
 async def display_velocity(request: Request):
