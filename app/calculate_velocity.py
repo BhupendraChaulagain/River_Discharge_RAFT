@@ -8,6 +8,7 @@ import sys
 from collections import deque
 from app.delete_frames import delete_all_files_in_directory
 from app.clear_create_dir import clear_and_create_directory
+from app.video_delete import delete_except
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), 'core')))
 # Import RAFT components
@@ -15,6 +16,7 @@ from core.raft import RAFT
 from core.utils.utils import InputPadder
 
 UPLOAD_DIR = "uploads"
+
 
 def load_model(model_path):
     """Load the pre-trained RAFT model."""
@@ -144,4 +146,5 @@ def calculate_velocity(frame_folder, output_csv, model_path, x_range=(0, 640), y
     else:
         print("No velocity data to save.")
 
+    delete_except(UPLOAD_DIR, "video_1.avi")
     return velocity_data

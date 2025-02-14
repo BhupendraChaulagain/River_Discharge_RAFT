@@ -96,8 +96,8 @@ def continuous_video_processing():
             'y_start': 0,
             'x_end': 640,
             'y_end': 480,
-            'num_segments': 4,
-            'scaling_factor': 1.0
+            'num_segments': 8,
+            'scaling_factor': 200
         }
         
         # Find the most recent videos in uploads directory
@@ -135,7 +135,7 @@ def continuous_video_processing():
                     )
 
                     # Wait for real data
-                    time.sleep(40)
+                    time.sleep(80)
 
                     # Use first video's parameters or default
                     region_params = first_video_region_params or default_region_params

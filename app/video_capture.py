@@ -12,7 +12,7 @@ rtsp_url = os.getenv("RTSP_URL")
 video_duration = 2
 
 # Set the interval of 10 minutes
-capture_interval = 70  
+capture_interval = 298  
 
 # Output directory for captured videos
 output_dir = os.path.join(os.getcwd(), "uploads")
