@@ -519,8 +519,8 @@ async def video_feed(request: Request):
         logger.error("Error: Could not open video stream.")
         raise HTTPException(status_code=500, detail="Failed to open video stream.")
     
-    cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
-    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
+    cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 360)
 
     session = request.session
 
@@ -538,7 +538,7 @@ async def video_feed(request: Request):
                 if not ret:
                     logger.error("Error: Failed to read frame.")
                     break
-                frame = cv2.resize(frame, (1280, 720))
+                frame = cv2.resize(frame, (640, 360))
                 try:
                 # Read velocity data from the CSV file asynchronously
                     csv_path = "velocity_data/velocity.csv"

@@ -28,7 +28,7 @@ def load_model(model_path):
     model.eval()
     return model
 
-def preprocess_frame(frame, scale_factor=0.25):
+def preprocess_frame(frame, scale_factor=1):
     #preprocessing input
     frame = cv2.GaussianBlur(frame, (5, 5), 0)
     original_h, original_w = frame.shape[:2]
@@ -39,8 +39,8 @@ def preprocess_frame(frame, scale_factor=0.25):
     frame_tensor = torch.from_numpy(resized_frame).permute(2, 0, 1).unsqueeze(0).float()
     return frame_tensor, (original_w, original_h), (resized_w, resized_h)
 
-def calculate_velocity(frame_folder, output_csv, model_path, x_range=(0, 640), y_range=(0, 480), 
-                       num_segments=4, frame_step=1, scale_factor=0.25):
+def calculate_velocity(frame_folder, output_csv, model_path, x_range=(0, 640), y_range=(0, 360), 
+                       num_segments=4, frame_step=1, scale_factor=1):
     
     model = load_model(model_path)
 

@@ -18,8 +18,8 @@ capture_interval = 70
 output_dir = os.path.join(os.getcwd(), "uploads")
 os.makedirs(output_dir, exist_ok=True)
 
-# Target resolution for output video (e.g., 1280x720)
-target_resolution = (1280, 720)
+# Target resolution for output video (e.g., 640x360)
+target_resolution = (640, 360)
 
 # Initialization of video capture
 is_capturing = None
