@@ -55,6 +55,8 @@ class VelocityDataHandler(FileSystemEventHandler):
             
             consolidated_df.to_csv(self.output_file, index=False)
             print(f"Processed and added data from {velocity_file} to {self.output_file}")
+            os.remove(velocity_file)
+            print(f"{velocity_file} has been deleted.")
             
         except Exception as e:
             print(f"Error processing {velocity_file}: {str(e)}")

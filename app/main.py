@@ -135,7 +135,7 @@ def continuous_video_processing():
                     )
 
                     # Wait for real data
-                    time.sleep(80)
+                    time.sleep(40)
 
                     # Use first video's parameters or default
                     region_params = first_video_region_params or default_region_params
