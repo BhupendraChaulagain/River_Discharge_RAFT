@@ -38,7 +38,7 @@ def draw_velocity_arrows_based_on_segments(frame, segment_avg_velocity, total_y_
             start_point,
             end_point,
             color=(255, 0, 0),  # Blue color in BGR
-            thickness=5,
+            thickness=4,
             tipLength=0.2
         )
         # Putting text

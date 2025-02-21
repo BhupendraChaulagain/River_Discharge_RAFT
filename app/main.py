@@ -135,7 +135,7 @@ def continuous_video_processing():
                     )
 
                     # Wait for real data
-                    time.sleep(40)
+                    time.sleep(80)
 
                     # Use first video's parameters or default
                     region_params = first_video_region_params or default_region_params
@@ -187,7 +187,7 @@ async def start_capture_endpoint(request: Request):
         daemon=True
     )
     video_processing_thread.start()
-    print("We are in start_capture")
+    
     velocity_monitor_thread = threading.Thread(
     target=start_velocity_monitoring,
     args=(VELOCITY_DATA_DIR,),  
@@ -195,7 +195,7 @@ async def start_capture_endpoint(request: Request):
    )
     velocity_monitor_thread.start()
 
-    print("Velocity monitoe inside start capture")
+   
     session = request.session
     
     try:
